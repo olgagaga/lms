@@ -180,6 +180,9 @@ const lessonDetails = createResource({
 			lesson.include_in_preview = data?.lesson?.include_in_preview
 				? true
 				: false
+			lesson.is_hidden = data?.lesson?.is_hidden
+				? true
+				: false
 			addLessonContent(data)
 			addInstructorNotes(data)
 			enableAutoSave()
