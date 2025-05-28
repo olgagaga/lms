@@ -10,6 +10,7 @@
  "field_order": [
   "title",
   "include_in_preview",
+  "is_hidden",
   "column_break_4",
   "chapter",
   "is_scorm_package",
@@ -47,6 +48,12 @@
    "fieldtype": "Check",
    "label": "Include In Preview"
   },
+  {
+    "default": "0",
+    "fieldname": "is_hidden",
+    "fieldtype": "Check",
+    "label": "Hide from Students"
+   },
   {
    "fieldname": "column_break_4",
    "fieldtype": "Column Break"

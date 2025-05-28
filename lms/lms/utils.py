@@ -135,6 +135,15 @@ def get_lesson_details(chapter, progress=False):
 	lesson_list = frappe.get_all(
 		"Lesson Reference", {"parent": chapter.name}, ["lesson", "idx"], order_by="idx"
 	)
+
+	# Get user role to check if they're an instructor
+	is_instructor = frappe.session.user != "Guest" and (
+    	frappe.db.exists("Has Role", {"parent": frappe.session.user, "role": "Course Creator"}) or
+    	frappe.db.exists("Has Role", {"parent": frappe.session.user, "role": "Moderator"}) or 
+		frappe.db.exists("Has Role", {"parent": frappe.session.user, "role": "Administrator"}) or
+		frappe.db.exists("Has Role", {"parent": frappe.session.user, "role": "System Manager"})
+    )
+
 	for row in lesson_list:
 		lesson_details = frappe.db.get_value(
 			"Course Lesson",
@@ -152,9 +161,14 @@ def get_lesson_details(chapter, progress=False):
 				"instructor_notes",
 				"course",
 				"content",
+				"is_hidden",
 			],
 			as_dict=True,
 		)
+
+		if lesson_details.is_hidden and not is_instructor:
+			continue
+
 		lesson_details.number = f"{chapter.idx}.{row.idx}"
 		lesson_details.icon = get_lesson_icon(lesson_details.body, lesson_details.content)
 

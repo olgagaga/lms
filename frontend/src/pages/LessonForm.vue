@@ -27,6 +27,12 @@
 							type="checkbox"
 							label="Include in Preview"
 						/>
+						<FormControl
+							v-model="lesson.is_hidden"
+							type="checkbox"
+							label="Hide from Students"
+							class="ml-3"
+						/>
 					</div>
 					<div class="border-t mt-4">
 						<div class="w-5/6 mx-auto pt-4">
@@ -152,6 +158,7 @@ const renderEditor = (holder) => {
 const lesson = reactive({
 	title: '',
 	include_in_preview: false,
+	is_hidden: false,
 	body: '',
 	instructor_notes: '',
 	content: '',
