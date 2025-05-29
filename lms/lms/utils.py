@@ -113,24 +113,36 @@ def get_chapters(course):
 def get_lessons(course, chapter=None, get_details=True, progress=False):
 	"""If chapter is passed, returns lessons of only that chapter.
 	Else returns lessons of all chapters of the course"""
+	
+	batch = None
+	if frappe.session.user != "Guest":
+		membership = frappe.db.get_value(
+            "LMS Enrollment",
+            {"member": frappe.session.user, "course": course},
+            ["batch_old"],
+            as_dict=True
+    	)
+		if membership:
+			batch = membership.batch_old
+	
 	lessons = []
 	lesson_count = 0
 	if chapter:
 		if get_details:
-			return get_lesson_details(chapter, progress=progress)
+			return get_lesson_details(chapter, progress=progress, batch=batch)
 		else:
 			return frappe.db.count("Lesson Reference", {"parent": chapter.name})
 
 	for chapter in get_chapters(course):
 		if get_details:
-			lessons += get_lesson_details(chapter, progress=progress)
+			lessons += get_lesson_details(chapter, progress=progress, batch=batch)
 		else:
 			lesson_count += frappe.db.count("Lesson Reference", {"parent": chapter.name})
 
 	return lessons if get_details else lesson_count
 
 
-def get_lesson_details(chapter, progress=False):
+def get_lesson_details(chapter, progress=False, batch=None):
 	lessons = []
 	lesson_list = frappe.get_all(
 		"Lesson Reference", {"parent": chapter.name}, ["lesson", "idx"], order_by="idx"
@@ -166,6 +178,15 @@ def get_lesson_details(chapter, progress=False):
 			],
 			as_dict=True,
 		)
+
+		if batch:
+			batch_visibility = frappe.db.get_value(
+                "Batch Lesson Visibility",
+                {"batch": batch, "lesson": lesson_details.name},
+                "hidden_from_students"
+            )
+			if batch_visibility:
+				continue
 
 		if lesson_details.is_hidden and not is_instructor:
 			continue
