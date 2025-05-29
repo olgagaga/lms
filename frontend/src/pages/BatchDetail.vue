@@ -33,11 +33,13 @@
 						v-html="batch.data.batch_details"
 					></div>
 				</div>
-				<div class="hidden md:block">
+				<div class="hidden md:block md:w-1/3 md:pl-5">
 					<BatchOverlay :batch="batch" />
 				</div>
 			</div>
-			<BatchOverlay :batch="batch" class="md:hidden mt-5" />
+			<div class="md:hidden mt-5">
+				<BatchOverlay :batch="batch" />
+			</div>
 			<div v-if="batch.data.courses.length">
 				<div class="flex items-center mt-10">
 					<div class="text-2xl font-semibold">

@@ -1424,3 +1424,30 @@ def capture_user_persona(responses):
 	if response.get("message").get("name"):
 		frappe.db.set_single_value("LMS Settings", "persona_captured", True)
 	return response
+
+
+@frappe.whitelist()
+def update_lesson_visibility(batch, lesson, hidden):
+    """Update the visibility of a lesson in a batch"""
+    if not frappe.session.user or not frappe.db.exists("Has Role", {"parent": frappe.session.user, "role": "Moderator"}):
+        frappe.throw("Not permitted")
+        
+    visibility = frappe.db.get_value(
+        "Batch Lesson Visibility",
+        {"batch": batch, "lesson": lesson}
+    )
+    
+    if visibility:
+        frappe.db.set_value(
+            "Batch Lesson Visibility",
+            visibility,
+            "hidden_from_students",
+            hidden
+        )
+    else:
+        frappe.get_doc({
+            "doctype": "Batch Lesson Visibility",
+            "batch": batch,
+            "lesson": lesson,
+            "hidden_from_students": hidden
+        }).insert()

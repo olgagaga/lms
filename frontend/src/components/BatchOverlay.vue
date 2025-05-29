@@ -72,7 +72,7 @@
 			</router-link>
 			<Button
       			v-if="isModerator"
-      			variant="outline"
+      			variant="solid"
       			class="w-full mt-2"
       			@click="showLessonVisibilityModal = true"
     		>
