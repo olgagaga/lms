@@ -2220,3 +2220,46 @@ def get_palette(full_name):
 
 def persona_captured():
 	frappe.db.set_single_value("LMS Settings", "persona_captured", 1)
+
+
+@frappe.whitelist()
+def get_course_lessons(course, batch):
+	"""Get all lessons for a course with their visibility status in a batch"""
+	if not frappe.session.user or not frappe.db.exists("Has Role", {"parent": frappe.session.user, "role": "Moderator"}):
+		frappe.throw("Not permitted")
+
+	# Get all chapters in the course
+	chapters = frappe.get_all(
+		"Chapter Reference",
+		{"parent": course},
+		["chapter"],
+		order_by="idx"
+	)
+
+	lessons = []
+	for chapter in chapters:
+		# Get all lessons in the chapter
+		chapter_lessons = frappe.get_all(
+			"Lesson Reference",
+			{"parent": chapter.chapter},
+			["lesson"],
+			order_by="idx"
+		)
+
+		for lesson_ref in chapter_lessons:
+			lesson = frappe.get_doc("Course Lesson", lesson_ref.lesson)
+			
+			# Get visibility status for this lesson in the batch
+			visibility = frappe.db.get_value(
+				"Batch Lesson Visibility",
+				{"batch": batch, "lesson": lesson.name},
+				"hidden_from_students"
+			)
+
+			lessons.append({
+				"name": lesson.name,
+				"title": lesson.title,
+				"hidden_from_students": bool(visibility)
+			})
+
+	return lessons

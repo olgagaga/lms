@@ -119,12 +119,6 @@
 							</div>
 						</template>
 					</Tooltip>
-					<Tooltip :text="__('Powered by Learning')">
-						<Zap
-							class="size-4 stroke-1.5 text-ink-gray-7 cursor-pointer"
-							@click="redirectToWebsite()"
-						/>
-					</Tooltip>
 					<Tooltip v-if="showOnboarding" :text="__('Help')">
 						<CircleHelp
 							class="size-4 stroke-1.5 text-ink-gray-7 cursor-pointer"
@@ -622,8 +616,4 @@ watch(userResource, () => {
 		setUpOnboarding()
 	}
 })
-
-const redirectToWebsite = () => {
-	window.open('https://frappe.io/learning', '_blank')
-}
 </script>
