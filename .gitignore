@@ -1,2 +1,14 @@
-*.pyc\n*.swp\nnode_modules/\n.env
-node_modules
+# Python
+*.pyc
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Node
+node_modules/
+
+# Environment
+.env
+
+# Editor
+*.swp
