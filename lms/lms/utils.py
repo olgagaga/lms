@@ -2228,6 +2228,8 @@ def get_course_lessons(course, batch):
 	if not frappe.session.user or not frappe.db.exists("Has Role", {"parent": frappe.session.user, "role": "Moderator"}):
 		frappe.throw("Not permitted")
 
+	frappe.logger().debug(f"Getting lessons for course {course} in batch {batch}")
+
 	# Get all chapters in the course
 	chapters = frappe.get_all(
 		"Chapter Reference",
@@ -2235,6 +2237,8 @@ def get_course_lessons(course, batch):
 		["chapter"],
 		order_by="idx"
 	)
+	
+	frappe.logger().debug(f"Found {len(chapters)} chapters in course {course}")
 
 	lessons = []
 	for chapter in chapters:
@@ -2245,6 +2249,8 @@ def get_course_lessons(course, batch):
 			["lesson"],
 			order_by="idx"
 		)
+		
+		frappe.logger().debug(f"Found {len(chapter_lessons)} lessons in chapter {chapter.chapter}")
 
 		for lesson_ref in chapter_lessons:
 			lesson = frappe.get_doc("Course Lesson", lesson_ref.lesson)
@@ -2255,6 +2261,8 @@ def get_course_lessons(course, batch):
 				{"batch": batch, "lesson": lesson.name},
 				"hidden_from_students"
 			)
+			
+			frappe.logger().debug(f"Lesson {lesson.name} visibility in batch {batch}: {visibility}")
 
 			lessons.append({
 				"name": lesson.name,
@@ -2262,4 +2270,5 @@ def get_course_lessons(course, batch):
 				"hidden_from_students": bool(visibility)
 			})
 
+	frappe.logger().debug(f"Returning {len(lessons)} total lessons for course {course}")
 	return lessons

@@ -64,6 +64,7 @@
     cache: ['batchCourses', props.batch],
     auto: true,
     onSuccess(data) {
+      console.log('Batch courses data:', data)
       // Fetch lessons for each course
       data.forEach(course => {
         getCourseLessons(course.name)
@@ -74,6 +75,7 @@
   const courseLessons = ref({})
   
   const getCourseLessons = (courseName) => {
+    console.log('Fetching lessons for course:', courseName)
     const lessonsResource = createResource({
       url: 'lms.lms.utils.get_course_lessons',
       params: {
@@ -82,6 +84,7 @@
       },
       auto: true,
       onSuccess(data) {
+        console.log('Lessons data for course', courseName, ':', data)
         courseLessons.value[courseName] = data
       }
     })

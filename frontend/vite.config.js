@@ -26,6 +26,17 @@ export default defineConfig({
 	],
 	server: {
 		allowedHosts: ['fs', 'per2'],
+		proxy: {
+			'/api': {
+				target: 'http://localhost:8000',
+				changeOrigin: true,
+			},
+			'/socket.io': {
+				target: 'http://localhost:9000',
+				changeOrigin: true,
+				ws: true,
+			}
+		},
 	},
 	resolve: {
 		alias: {
