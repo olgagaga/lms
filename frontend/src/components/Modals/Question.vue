@@ -116,13 +116,13 @@
 								editorClass="prose-sm max-w-none border-b border-x bg-surface-gray-2 rounded-b-md py-1 px-2 min-h-[7rem]"
 							/>
 						</div>
-						<div v-for="n in 4" class="grid grid-cols-3 gap-4">
-							<FormControl
+						<div v-for="n in 4" class="grid grid-cols-2 gap-4">
+							<!-- <FormControl
 								:label="__('Blank') + ' ' + n"
 								v-model="question[`blank_${n}`]"
 								type="text"
 								:required="n == 1 ? true : false"
-							/>
+							/> -->
 							<FormControl
 								:label="__('Correct Answer') + ' ' + n"
 								v-model="question[`correct_answer_${n}`]"
@@ -282,7 +282,7 @@ const questionCreation = createResource({
 		if (question.type === 'Fill In') {
 			doc.fill_in_answers = []
 			for (let i = 1; i <= 4; i++) {
-				if (question[`blank_${i}`] && question[`correct_answer_${i}`]) {
+				if (question[`correct_answer_${i}`]) {
 					doc.fill_in_answers.push({
 						blank_number: i,
 						correct_answer: question[`correct_answer_${i}`],
