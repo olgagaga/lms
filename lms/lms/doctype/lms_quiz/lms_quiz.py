@@ -264,6 +264,8 @@ def check_answer(question, type, answers):
 	answers = json.loads(answers)
 	if type == "Choices":
 		return check_choice_answers(question, answers)
+	elif type == "Fill In":
+		return check_fill_in_answers(question, answers)
 	else:
 		return check_input_answers(question, answers[0])
 
@@ -286,6 +288,27 @@ def check_choice_answers(question, answers):
 			is_correct.append(0)
 
 	return is_correct
+
+
+def check_fill_in_answers(question, answers):
+	question_details = frappe.get_doc("LMS Question", question)
+	
+	correct_answers = {}
+	for answer in question_details.fill_in_answers:
+		correct_answers[answer.blank_number] = answer.correct_answer.lower()
+	
+	user_answers = {}
+	for i, answer in enumerate(answers, 1):
+		user_answers[i] = answer.lower()
+	
+	results = []
+	for blank_num in correct_answers:
+		if blank_num in user_answers:
+			results.append(correct_answers[blank_num] == user_answers[blank_num])
+		else:
+			results.append(False)
+	
+	return results
 
 
 def check_input_answers(question, answer):

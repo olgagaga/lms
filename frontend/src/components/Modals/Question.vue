@@ -44,7 +44,7 @@
 							:label="__('Type')"
 							v-model="question.type"
 							type="select"
-							:options="['Choices', 'User Input', 'Open Ended']"
+							:options="['Choices', 'User Input', 'Open Ended', 'Fill In']"
 							class="pb-2"
 							:required="true"
 						/>
@@ -60,6 +60,12 @@
 						class="text-base font-semibold text-ink-gray-9 mb-5 mt-5"
 					>
 						{{ __('Possibilities') }}
+					</div>
+					<div
+						v-else-if="question.type == 'Fill In'"
+						class="text-base font-semibold text-ink-gray-9 mb-5 mt-5"
+					>
+						{{ __('Fill In Answers') }}
 					</div>
 					<div v-if="question.type == 'Choices'" class="grid grid-cols-2 gap-4">
 						<div v-for="n in 4" class="space-y-4 py-2">
@@ -87,6 +93,28 @@
 							<FormControl
 								:label="__('Possibility') + ' ' + n"
 								v-model="question[`possibility_${n}`]"
+								:required="n == 1 ? true : false"
+							/>
+						</div>
+					</div>
+					<div
+						v-else-if="question.type == 'Fill In'"
+						class="space-y-4 py-2"
+					>
+						<div class="text-sm text-ink-gray-5 mb-2">
+							{{ __('Use __1__, __2__, etc. in your question text to mark blanks.') }}
+						</div>
+						<div v-for="n in 4" class="grid grid-cols-2 gap-4">
+							<FormControl
+								:label="__('Blank') + ' ' + n"
+								v-model="question[`blank_${n}`]"
+								type="text"
+								:required="n == 1 ? true : false"
+							/>
+							<FormControl
+								:label="__('Correct Answer') + ' ' + n"
+								v-model="question[`correct_answer_${n}`]"
+								type="text"
 								:required="n == 1 ? true : false"
 							/>
 						</div>
@@ -145,7 +173,7 @@ const question = reactive({
 })
 
 const populateFields = () => {
-	let fields = ['option', 'is_correct', 'explanation', 'possibility']
+	let fields = ['option', 'is_correct', 'explanation', 'possibility', 'blank', 'correct_answer']
 	let counter = 1
 	fields.forEach((field) => {
 		while (counter <= 4) {
@@ -229,12 +257,24 @@ const questionRow = createResource({
 const questionCreation = createResource({
 	url: 'frappe.client.insert',
 	makeParams(values) {
-		return {
-			doc: {
-				doctype: 'LMS Question',
-				...question,
-			},
+		let doc = {
+			doctype: 'LMS Question',
+			...question,
 		}
+
+		if (question.type === 'Fill In') {
+			doc.fill_in_answers = []
+			for (let i = 1; i <= 4; i++) {
+				if (question[`blank_${i}`] && question[`correct_answer_${i}`]) {
+					doc.fill_in_answers.push({
+						blank_number: i,
+						correct_answer: question[`correct_answer_${i}`]
+					})
+				}
+			}
+		}
+
+		return { doc }
 	},
 })
 

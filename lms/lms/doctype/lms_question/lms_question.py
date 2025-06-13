@@ -20,6 +20,8 @@ def validate_correct_answers(question):
 		validate_correct_options(question)
 	elif question.type == "User Input":
 		validate_possible_answer(question)
+	elif question.type == "Fill In":
+		validate_fill_in_answers(question)
 
 
 def validate_duplicate_options(question):
@@ -67,6 +69,29 @@ def validate_possible_answer(question):
 				frappe.bold(question.question)
 			)
 		)
+
+
+def validate_fill_in_answers(question):
+	if not question.fill_in_answers:
+		frappe.throw(_("Please add at least one fill in answer"))
+	
+	# Validate that blank numbers are sequential and start from 1
+	blank_numbers = [answer.blank_number for answer in question.fill_in_answers]
+	blank_numbers.sort()
+	
+	if blank_numbers[0] != 1:
+		frappe.throw(_("Blank numbers must start from 1"))
+	
+	for i in range(len(blank_numbers) - 1):
+		if blank_numbers[i + 1] - blank_numbers[i] != 1:
+			frappe.throw(_("Blank numbers must be sequential"))
+	
+	# Validate that question text contains all the blanks
+	question_text = question.question
+	for i in range(1, len(blank_numbers) + 1):
+		blank_marker = f"__{i}__"
+		if blank_marker not in question_text:
+			frappe.throw(_(f"Question text must contain blank marker {blank_marker}"))
 
 
 def update_question_title(question):

@@ -37,7 +37,9 @@
   "possibility_3",
   "column_break_wpjr",
   "possibility_2",
-  "possibility_4"
+  "possibility_4",
+  "section_break_fill_in",
+  "fill_in_answers"
  ],
  "fields": [
   {
@@ -51,7 +53,7 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Type",
-   "options": "Choices\nUser Input\nOpen Ended"
+   "options": "Choices\nUser Input\nOpen Ended\nFill In"
   },
   {
    "depends_on": "eval:doc.type == \"Choices\";",
@@ -191,6 +193,19 @@
    "fieldname": "possibility_4",
    "fieldtype": "Small Text",
    "label": "Possible Answer 4"
+  },
+  {
+   "depends_on": "eval: doc.type == 'Fill In'",
+   "fieldname": "section_break_fill_in",
+   "fieldtype": "Section Break",
+   "label": "Fill In Answers"
+  },
+  {
+   "fieldname": "fill_in_answers",
+   "fieldtype": "Table",
+   "label": "Fill In Answers",
+   "options": "Fill In Answer",
+   "mandatory_depends_on": "eval: doc.type == 'Fill In'"
   }
  ],
  "index_web_pages_for_search": 1,

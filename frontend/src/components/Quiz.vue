@@ -174,6 +174,41 @@
 							</Badge>
 						</div>
 					</div>
+					<div v-else-if="questionDetails.data.type == 'Fill In'">
+						<div class="space-y-4">
+							<div class="text-ink-gray-9 font-medium mb-4">
+								<span v-for="(part, index) in parsedFillInQuestion" :key="index">
+									<span v-if="part.type === 'text'">{{ part.value }}</span>
+									<input
+										v-else
+										type="text"
+										v-model="fillInAnswers[part.index]"
+										:disabled="showAnswers.length ? true : false"
+										class="inline-block w-32 px-2 py-1 mx-1 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+										:placeholder="__('Answer')"
+									/>
+								</span>
+							</div>
+
+							<div v-if="showAnswers.length" class="mt-4 space-y-2">
+								<div v-for="(answer, index) in fillInAnswers" :key="index" class="flex items-center space-x-2">
+									<Badge v-if="showAnswers[index]" :label="__('Correct')" theme="green">
+										<template #prefix>
+											<CheckCircle class="w-4 h-4 text-ink-green-2 mr-1" />
+										</template>
+									</Badge>
+									<Badge v-else theme="red" :label="__('Incorrect')">
+										<template #prefix>
+											<XCircle class="w-4 h-4 text-ink-red-3 mr-1" />
+										</template>
+									</Badge>
+									<div v-if="!showAnswers[index]" class="text-sm text-ink-gray-7">
+										{{ __('Correct answer: {0}').format(questionDetails.data[`correct_answer_${index + 1}`]) }}
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
 					<div v-else>
 						<TextEditor
 							class="mt-4"
@@ -309,6 +344,8 @@ const possibleAnswer = ref(null)
 const timer = ref(0)
 let timerInterval = null
 const router = useRouter()
+const fillInAnswers = ref([])
+const parsedFillInQuestion = ref([])
 
 const props = defineProps({
 	quizName: {
@@ -454,6 +491,20 @@ watch(activeQuestion, (value) => {
 	}
 })
 
+watch(questionDetails, (newValue) => {
+	if (newValue?.data?.type === 'Fill In') {
+		try {
+			const blankCount = newValue.data.question.match(/__(\d+)__/g)?.length || 0
+			fillInAnswers.value = new Array(blankCount).fill('')
+			parsedFillInQuestion.value = parseFillInQuestion(newValue.data.question)
+			
+		} catch (error) {
+			console.error('Error parsing fill-in question:', error)
+			toast.error(__('Error loading question. Please try again.'))
+		}
+	}
+}, { deep: true })
+
 watch(
 	() => props.quizName,
 	(newName) => {
@@ -475,26 +526,72 @@ const markAnswer = (index) => {
 	selectedOptions[index - 1] = selectedOptions[index - 1] ? 0 : 1
 }
 
-const getAnswers = () => {
-	let answers = []
-	const type = questionDetails.data.type
+const stripHtml = (html) => {
+	const tmp = document.createElement('DIV')
+	tmp.innerHTML = html
+	return tmp.textContent || tmp.innerText || ''
+}
 
-	if (type == 'Choices') {
-		selectedOptions.forEach((value, index) => {
-			if (selectedOptions[index])
-				answers.push(questionDetails.data[`option_${index + 1}`])
-		})
-	} else {
-		answers.push(possibleAnswer.value)
+const parseFillInQuestion = (question) => {
+	const parts = []
+	let regex = /__(\d+)__/g
+	let lastIndex = 0
+	let match
+	const cleanQuestion = stripHtml(question)
+
+	while ((match = regex.exec(cleanQuestion)) !== null) {
+		if (match.index > lastIndex) {
+			parts.push({ type: 'text', value: cleanQuestion.slice(lastIndex, match.index) })
+		}
+		parts.push({ type: 'blank', index: parseInt(match[1]) - 1 })
+		lastIndex = regex.lastIndex
 	}
+	if (lastIndex < cleanQuestion.length) {
+		parts.push({ type: 'text', value: cleanQuestion.slice(lastIndex) })
+	}
+	return parts
+}
 
-	return answers
+const formatFillInQuestion = (question) => {
+	// Replace __n__ with input fields
+	return question.replace(/__(\d+)__/g, (match, number) => {
+		return `<input 
+			type="text" 
+			v-model="fillInAnswers[${number - 1}]" 
+			:disabled="showAnswers.length ? true : false"
+			class="inline-block w-32 px-2 py-1 mx-1 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+			:placeholder="__('Answer')"
+		/>`
+	})
+}
+
+const getAnswers = () => {
+	if (questionDetails.data.type === 'Choices') {
+		return selectedOptions
+			.map((option, index) => (option ? questionDetails.data[`option_${index + 1}`] : null))
+			.filter(Boolean)
+	} else if (questionDetails.data.type === 'Fill In') {
+		// Get all answers, filtering out empty strings
+		const answers = fillInAnswers.value.filter(answer => answer && answer.trim() !== '')
+		const requiredBlanks = questionDetails.data.question.match(/__(\d+)__/g)?.length || 0
+		
+		if (answers.length < requiredBlanks) {
+			toast.warning(__('Please fill in all blanks'))
+			return []
+		}
+		return answers
+	} else {
+		return [possibleAnswer.value]
+	}
 }
 
 const checkAnswer = () => {
 	let answers = getAnswers()
-	if (!answers.length) {
+	if (questionDetails.data.type === 'Choices' && !answers.length) {
 		toast.warning(__('Please select an option'))
+		return
+	}
+	if (questionDetails.data.type === 'Fill In' && !answers.length) {
 		return
 	}
 
@@ -518,6 +615,8 @@ const checkAnswer = () => {
 						showAnswers[index] = undefined
 					}
 				})
+			} else if (type == 'Fill In') {
+				showAnswers.splice(0, showAnswers.length, ...data)
 			} else {
 				showAnswers.push(data)
 			}
@@ -557,6 +656,7 @@ const resetQuestion = () => {
 	selectedOptions.splice(0, selectedOptions.length, ...[0, 0, 0, 0])
 	showAnswers.length = 0
 	possibleAnswer.value = null
+	fillInAnswers.value = []
 }
 
 const submitQuiz = () => {
