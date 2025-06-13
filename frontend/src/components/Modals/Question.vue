@@ -104,6 +104,18 @@
 						<div class="text-sm text-ink-gray-5 mb-2">
 							{{ __('Use __1__, __2__, etc. in your question text to mark blanks.') }}
 						</div>
+						<div class="mb-4">
+							<label class="block text-xs text-ink-gray-5 mb-1">
+								{{ __('Text with Blanks') }}
+							</label>
+							<TextEditor
+								:content="question.text_with_blanks"
+								@change="(val) => (question.text_with_blanks = val)"
+								:editable="true"
+								:fixedMenu="true"
+								editorClass="prose-sm max-w-none border-b border-x bg-surface-gray-2 rounded-b-md py-1 px-2 min-h-[7rem]"
+							/>
+						</div>
 						<div v-for="n in 4" class="grid grid-cols-2 gap-4">
 							<FormControl
 								:label="__('Blank') + ' ' + n"

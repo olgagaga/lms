@@ -202,9 +202,9 @@
 											<XCircle class="w-4 h-4 text-ink-red-3 mr-1" />
 										</template>
 									</Badge>
-									<div v-if="!showAnswers[index]" class="text-sm text-ink-gray-7">
+									<!-- <div v-if="!showAnswers[index]" class="text-sm text-ink-gray-7">
 										{{ __('Correct answer: {0}').format(questionDetails.data[`correct_answer_${index + 1}`]) }}
-									</div>
+									</div> -->
 								</div>
 							</div>
 						</div>
@@ -494,9 +494,14 @@ watch(activeQuestion, (value) => {
 watch(questionDetails, (newValue) => {
 	if (newValue?.data?.type === 'Fill In') {
 		try {
-			const blankCount = newValue.data.question.match(/__(\d+)__/g)?.length || 0
+			if (!newValue.data.text_with_blanks) {
+				console.error('Text with blanks is not defined')
+				toast.error(__('Error: Text with blanks is missing'))
+				return
+			}
+			const blankCount = newValue.data.text_with_blanks.match(/__(\d+)__/g)?.length || 0
 			fillInAnswers.value = new Array(blankCount).fill('')
-			parsedFillInQuestion.value = parseFillInQuestion(newValue.data.question)
+			parsedFillInQuestion.value = parseFillInQuestion(newValue.data.text_with_blanks)
 			
 		} catch (error) {
 			console.error('Error parsing fill-in question:', error)
@@ -573,7 +578,7 @@ const getAnswers = () => {
 	} else if (questionDetails.data.type === 'Fill In') {
 		// Get all answers, filtering out empty strings
 		const answers = fillInAnswers.value.filter(answer => answer && answer.trim() !== '')
-		const requiredBlanks = questionDetails.data.question.match(/__(\d+)__/g)?.length || 0
+		const requiredBlanks = questionDetails.data.text_with_blanks.match(/__(\d+)__/g)?.length || 0
 		
 		if (answers.length < requiredBlanks) {
 			toast.warning(__('Please fill in all blanks'))

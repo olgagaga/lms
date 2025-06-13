@@ -86,12 +86,12 @@ def validate_fill_in_answers(question):
 		if blank_numbers[i + 1] - blank_numbers[i] != 1:
 			frappe.throw(_("Blank numbers must be sequential"))
 	
-	# Validate that question text contains all the blanks
-	question_text = question.question
+	# Validate that text_with_blanks contains all the blanks
+	text_with_blanks = question.text_with_blanks
 	for i in range(1, len(blank_numbers) + 1):
 		blank_marker = f"__{i}__"
-		if blank_marker not in question_text:
-			frappe.throw(_(f"Question text must contain blank marker {blank_marker}"))
+		if blank_marker not in text_with_blanks:
+			frappe.throw(_(f"Text with blanks must contain blank marker {blank_marker}"))
 
 
 def update_question_title(question):

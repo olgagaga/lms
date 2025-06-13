@@ -10,6 +10,7 @@
   "marks",
   "section_break_huup",
   "question_detail",
+  "text_with_blanks",
   "type"
  ],
  "fields": [
@@ -36,7 +37,17 @@
    "fieldtype": "Text",
    "in_list_view": 1,
    "label": "Question Detail",
-   "read_only": 1
+   "read_only": 1,
+   "depends_on": "eval:doc.type != 'Fill In'"
+  },
+  {
+   "fetch_from": "question.text_with_blanks",
+   "fieldname": "text_with_blanks",
+   "fieldtype": "Text",
+   "in_list_view": 1,
+   "label": "Text with Blanks",
+   "read_only": 1,
+   "depends_on": "eval:doc.type == 'Fill In'"
   },
   {
    "fieldname": "column_break_qcpo",

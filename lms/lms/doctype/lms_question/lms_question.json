@@ -39,6 +39,7 @@
   "possibility_2",
   "possibility_4",
   "section_break_fill_in",
+  "text_with_blanks",
   "fill_in_answers"
  ],
  "fields": [
@@ -199,6 +200,12 @@
    "fieldname": "section_break_fill_in",
    "fieldtype": "Section Break",
    "label": "Fill In Answers"
+  },
+  {
+   "fieldname": "text_with_blanks",
+   "fieldtype": "Text Editor",
+   "label": "Text with Blanks",
+   "mandatory_depends_on": "eval: doc.type == 'Fill In'"
   },
   {
    "fieldname": "fill_in_answers",

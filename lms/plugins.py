@@ -112,7 +112,7 @@ def quiz_renderer(quiz_name):
 		as_dict=True,
 	)
 	quiz.questions = []
-	fields = ["name", "question", "type", "multiple"]
+	fields = ["name", "question", "type", "multiple", "text_with_blanks"]
 	for num in range(1, 5):
 		fields.append(f"option_{num}")
 		fields.append(f"is_correct_{num}")

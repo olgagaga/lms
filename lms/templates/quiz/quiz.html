@@ -62,7 +62,11 @@
 					{{ _("Question ") }}{{ loop.index }}: {{ instruction }}
 				</div>
 				<div class="question-text">
-					{{ question.question }}
+					{% if question.type == "Fill In" %}
+						{{ question.text_with_blanks }}
+					{% else %}
+						{{ question.question }}
+					{% endif %}
 				</div>
 			</div>
 
