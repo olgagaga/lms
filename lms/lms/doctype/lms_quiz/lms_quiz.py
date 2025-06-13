@@ -293,21 +293,26 @@ def check_choice_answers(question, answers):
 def check_fill_in_answers(question, answers):
 	question_details = frappe.get_doc("LMS Question", question)
 	
+	# Map blank_number to (correct_answer, case_sensitive)
 	correct_answers = {}
 	for answer in question_details.fill_in_answers:
-		correct_answers[answer.blank_number] = answer.correct_answer.lower()
+		correct_answers[answer.blank_number] = (answer.correct_answer, answer.case_sensitive)
 	
 	user_answers = {}
 	for i, answer in enumerate(answers, 1):
-		user_answers[i] = answer.lower()
+		user_answers[i] = answer
 	
 	results = []
 	for blank_num in correct_answers:
-		if blank_num in user_answers:
-			results.append(correct_answers[blank_num] == user_answers[blank_num])
+		correct_answer, case_sensitive = correct_answers[blank_num]
+		user_answer = user_answers.get(blank_num)
+		if user_answer is not None:
+			if case_sensitive:
+				results.append(correct_answer == user_answer)
+			else:
+				results.append(correct_answer.lower() == user_answer.lower())
 		else:
 			results.append(False)
-	
 	return results
 
 
