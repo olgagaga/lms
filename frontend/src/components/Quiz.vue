@@ -184,28 +184,19 @@
 										type="text"
 										v-model="fillInAnswers[part.index]"
 										:disabled="showAnswers.length ? true : false"
-										class="inline-block w-32 px-2 py-1 mx-1 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+										:class="[
+											'inline-block w-32 px-2 py-1 mx-1 border rounded-md focus:outline-none',
+											showAnswers.length
+												? showAnswers[part.index] === true
+													? 'border-green-500 bg-green-50 text-green-900'
+													: showAnswers[part.index] === false
+														? 'border-red-500 bg-red-50 text-red-900'
+														: ''
+												: 'focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
+										]"
 										:placeholder="__('Answer')"
 									/>
 								</span>
-							</div>
-
-							<div v-if="showAnswers.length" class="mt-4 space-y-2">
-								<div v-for="(answer, index) in fillInAnswers" :key="index" class="flex items-center space-x-2">
-									<Badge v-if="showAnswers[index]" :label="__('Correct')" theme="green">
-										<template #prefix>
-											<CheckCircle class="w-4 h-4 text-ink-green-2 mr-1" />
-										</template>
-									</Badge>
-									<Badge v-else theme="red" :label="__('Incorrect')">
-										<template #prefix>
-											<XCircle class="w-4 h-4 text-ink-red-3 mr-1" />
-										</template>
-									</Badge>
-									<!-- <div v-if="!showAnswers[index]" class="text-sm text-ink-gray-7">
-										{{ __('Correct answer: {0}').format(questionDetails.data[`correct_answer_${index + 1}`]) }}
-									</div> -->
-								</div>
 							</div>
 						</div>
 					</div>
