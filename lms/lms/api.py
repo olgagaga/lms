@@ -1451,3 +1451,81 @@ def update_lesson_visibility(batch, lesson, hidden):
             "lesson": lesson,
             "hidden_from_students": hidden
         }).insert()
+
+
+@frappe.whitelist()
+def get_course_chapters(course, batch):
+    """Get all chapters for a course with their visibility status in a batch"""
+    if not frappe.session.user or not frappe.db.exists("Has Role", {"parent": frappe.session.user, "role": "Moderator"}):
+        frappe.throw("Not permitted")
+
+    # Get all chapters in the course
+    chapters = frappe.get_all(
+        "Chapter Reference",
+        {"parent": course},
+        ["chapter"],
+        order_by="idx"
+    )
+    
+    result = []
+    for chapter in chapters:
+        chapter_doc = frappe.get_doc("Course Chapter", chapter.chapter)
+        
+        # Get visibility status for this chapter in the batch
+        visibility = frappe.db.get_value(
+            "Batch Chapter Visibility",
+            {"batch": batch, "chapter": chapter.chapter},
+            "hidden_from_students"
+        )
+        
+        result.append({
+            "name": chapter.chapter,
+            "title": chapter_doc.title,
+            "hidden_from_students": bool(visibility)
+        })
+
+    return result
+
+
+@frappe.whitelist()
+def update_chapter_visibility(course, batch, visibility):
+    """Update visibility of chapters in a batch"""
+    if not frappe.session.user or not frappe.db.exists("Has Role", {"parent": frappe.session.user, "role": "Moderator"}):
+        frappe.throw("Not permitted")
+
+    visibility = frappe.parse_json(visibility)
+    
+    # Get all chapters in the course
+    chapters = frappe.get_all(
+        "Chapter Reference",
+        {"parent": course},
+        ["chapter"],
+        order_by="idx"
+    )
+    
+    for chapter in chapters:
+        # Update visibility for this chapter in the batch
+        hidden = not visibility.get(chapter.chapter, True)
+        
+        # Check if visibility record exists
+        visibility_doc = frappe.db.get_value(
+            "Batch Chapter Visibility",
+            {"batch": batch, "chapter": chapter.chapter}
+        )
+        
+        if visibility_doc:
+            frappe.db.set_value(
+                "Batch Chapter Visibility",
+                visibility_doc,
+                "hidden_from_students",
+                hidden
+            )
+        else:
+            frappe.get_doc({
+                "doctype": "Batch Chapter Visibility",
+                "batch": batch,
+                "chapter": chapter.chapter,
+                "hidden_from_students": hidden
+            }).insert()
+
+    return {"success": True}
