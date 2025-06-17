@@ -52,16 +52,7 @@
 						v-for="course in courses.data"
 						:key="course.course"
 					>
-						<router-link
-							:to="{
-								name: 'CourseDetail',
-								params: {
-									courseName: course.name,
-								},
-							}"
-						>
-							<CourseCard :course="course" :key="course.name" :isBatchView="true" />
-						</router-link>
+						<CourseCard :course="course" :key="course.name" :isBatchView="true" />
 					</div>
 				</div>
 				<div v-if="batch.data.batch_details_raw">

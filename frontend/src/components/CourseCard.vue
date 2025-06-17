@@ -1,134 +1,147 @@
 <template>
-	<div
-		v-if="course.title"
-		class="flex flex-col h-full rounded-md border-2 overflow-auto"
-		style="min-height: 350px"
-	>
-		<div
-			class="course-image"
-			:class="{ 'default-image': !course.image }"
-			:style="{ backgroundImage: 'url(\'' + encodeURI(course.image) + '\')' }"
+	<div class="flex flex-col">
+		<router-link
+			:to="{
+				name: 'CourseDetail',
+				params: {
+					courseName: course.name,
+				},
+			}"
+			class="block"
 		>
-			<div class="flex items-center flex-wrap relative top-4 px-2 w-fit">
-				<Badge
-					v-if="course.featured"
-					variant="subtle"
-					theme="green"
-					size="md"
-					class="mb-1 mr-1"
-				>
-					{{ __('Featured') }}
-				</Badge>
-				<div
-					v-if="course.tags"
-					v-for="tag in course.tags?.split(', ')"
-					class="text-xs bg-white text-gray-800 px-2 py-0.5 rounded-md mb-1 mr-1"
-				>
-					{{ tag }}
-				</div>
-			</div>
-			<div v-if="!course.image" class="image-placeholder">
-				{{ course.title[0] }}
-			</div>
-		</div>
-		<div class="flex flex-col flex-auto p-4">
-			<div class="flex items-center justify-between mb-2">
-				<div v-if="course.lessons">
-					<Tooltip :text="__('Lessons')">
-						<span class="flex items-center text-ink-gray-7">
-							<BookOpen class="h-4 w-4 stroke-1.5 mr-1" />
-							{{ course.lessons }}
-						</span>
-					</Tooltip>
-				</div>
-
-				<div v-if="course.enrollments">
-					<Tooltip :text="__('Enrolled Students')">
-						<span class="flex items-center text-ink-gray-7">
-							<Users class="h-4 w-4 stroke-1. mr-1" />
-							{{ course.enrollments }}
-						</span>
-					</Tooltip>
-				</div>
-
-				<div v-if="course.rating">
-					<Tooltip :text="__('Average Rating')">
-						<span class="flex items-center text-ink-gray-7">
-							<Star class="h-4 w-4 stroke-1.5 mr-1" />
-							{{ course.rating }}
-						</span>
-					</Tooltip>
-				</div>
-
-				<div v-if="course.status != 'Approved'">
-					<Badge
-						variant="subtle"
-						:theme="course.status === 'Under Review' ? 'orange' : 'blue'"
-						size="sm"
-					>
-						{{ course.status }}
-					</Badge>
-				</div>
-			</div>
-
-			<div class="text-xl font-semibold leading-6 text-ink-gray-9">
-				{{ course.title }}
-			</div>
-
-			<div class="short-introduction text-ink-gray-7 text-sm">
-				{{ course.short_introduction }}
-			</div>
-
-			<ProgressBar
-				v-if="user && course.membership"
-				:progress="course.membership.progress"
-			/>
-
 			<div
-				v-if="user && course.membership"
-				class="text-sm text-ink-gray-7 mt-2 mb-4"
+				v-if="course.title"
+				class="flex flex-col h-full rounded-md border-2 overflow-auto"
+				style="min-height: 350px"
 			>
-				{{ Math.ceil(course.membership.progress) }}% completed
-			</div>
-
-			<div class="flex items-center justify-between mt-auto">
-				<div class="flex avatar-group overlap">
-					<div
-						class="h-6 mr-1"
-						:class="{ 'avatar-group overlap': course.instructors.length > 1 }"
-					>
-						<UserAvatar
-							v-for="instructor in course.instructors"
-							:user="instructor"
-						/>
+				<div
+					class="course-image"
+					:class="{ 'default-image': !course.image }"
+					:style="{ backgroundImage: 'url(\'' + encodeURI(course.image) + '\')' }"
+				>
+					<div class="flex items-center flex-wrap relative top-4 px-2 w-fit">
+						<Badge
+							v-if="course.featured"
+							variant="subtle"
+							theme="green"
+							size="md"
+							class="mb-1 mr-1"
+						>
+							{{ __('Featured') }}
+						</Badge>
+						<div
+							v-if="course.tags"
+							v-for="tag in course.tags?.split(', ')"
+							class="text-xs bg-white text-gray-800 px-2 py-0.5 rounded-md mb-1 mr-1"
+						>
+							{{ tag }}
+						</div>
 					</div>
-					<CourseInstructors :instructors="course.instructors" />
-				</div>
-
-				<div class="flex items-center space-x-2">
-					<Button
-						v-if="isBatchView && user?.data?.is_moderator"
-						variant="subtle"
-						size="sm"
-						@click.stop="openChapterVisibilityModal"
-					>
-						<template #prefix>
-							<Eye class="h-4 w-4" />
-						</template>
-						{{ __('Manage Visibility') }}
-					</Button>
-					<div v-if="course.paid_course" class="font-semibold">
-						{{ course.price }}
-					</div>
-					<div
-						v-if="course.paid_certificate || course.enable_certification"
-						class="text-xs text-ink-blue-3 bg-surface-blue-1 py-0.5 px-1 rounded-md"
-					>
-						{{ __('Certification') }}
+					<div v-if="!course.image" class="image-placeholder">
+						{{ course.title[0] }}
 					</div>
 				</div>
+				<div class="flex flex-col flex-auto p-4">
+					<div class="flex items-center justify-between mb-2">
+						<div v-if="course.lessons">
+							<Tooltip :text="__('Lessons')">
+								<span class="flex items-center text-ink-gray-7">
+									<BookOpen class="h-4 w-4 stroke-1.5 mr-1" />
+									{{ course.lessons }}
+								</span>
+							</Tooltip>
+						</div>
+
+						<div v-if="course.enrollments">
+							<Tooltip :text="__('Enrolled Students')">
+								<span class="flex items-center text-ink-gray-7">
+									<Users class="h-4 w-4 stroke-1. mr-1" />
+									{{ course.enrollments }}
+								</span>
+							</Tooltip>
+						</div>
+
+						<div v-if="course.rating">
+							<Tooltip :text="__('Average Rating')">
+								<span class="flex items-center text-ink-gray-7">
+									<Star class="h-4 w-4 stroke-1.5 mr-1" />
+									{{ course.rating }}
+								</span>
+							</Tooltip>
+						</div>
+
+						<div v-if="course.status != 'Approved'">
+							<Badge
+								variant="subtle"
+								:theme="course.status === 'Under Review' ? 'orange' : 'blue'"
+								size="sm"
+							>
+								{{ course.status }}
+							</Badge>
+						</div>
+					</div>
+
+					<div class="text-xl font-semibold leading-6 text-ink-gray-9">
+						{{ course.title }}
+					</div>
+
+					<div class="short-introduction text-ink-gray-7 text-sm">
+						{{ course.short_introduction }}
+					</div>
+
+					<ProgressBar
+						v-if="user && course.membership"
+						:progress="course.membership.progress"
+					/>
+
+					<div
+						v-if="user && course.membership"
+						class="text-sm text-ink-gray-7 mt-2 mb-4"
+					>
+						{{ Math.ceil(course.membership.progress) }}% completed
+					</div>
+
+					<div class="flex items-center justify-between mt-auto">
+						<div class="flex avatar-group overlap">
+							<div
+								class="h-6 mr-1"
+								:class="{ 'avatar-group overlap': course.instructors.length > 1 }"
+							>
+								<UserAvatar
+									v-for="instructor in course.instructors"
+									:user="instructor"
+								/>
+							</div>
+							<CourseInstructors :instructors="course.instructors" />
+						</div>
+
+						<div class="flex items-center space-x-2">
+							<div v-if="course.paid_course" class="font-semibold">
+								{{ course.price }}
+							</div>
+							<div
+								v-if="course.paid_certificate || course.enable_certification"
+								class="text-xs text-ink-blue-3 bg-surface-blue-1 py-0.5 px-1 rounded-md"
+							>
+								{{ __('Certification') }}
+							</div>
+						</div>
+					</div>
+				</div>
 			</div>
-		</div>
+		</router-link>
+		<Button
+			v-if="isBatchView && user?.data?.is_moderator"
+			variant="subtle"
+			size="sm"
+			class="w-full mt-2"
+			@click="openChapterVisibilityModal"
+		>
+			<template #prefix>
+				<Eye class="h-4 w-4" />
+			</template>
+			{{ __('Manage Visibility') }}
+		</Button>
 	</div>
 	<ChapterVisibilityModal
 		v-if="showChapterVisibilityModal"
