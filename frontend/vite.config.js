@@ -35,7 +35,7 @@ export default defineConfig({
 				target: 'http://localhost:9000',
 				changeOrigin: true,
 				ws: true,
-			}
+			},
 		},
 	},
 	resolve: {

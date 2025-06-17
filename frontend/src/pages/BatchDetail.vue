@@ -60,7 +60,7 @@
 								},
 							}"
 						>
-							<CourseCard :course="course" :key="course.name" />
+							<CourseCard :course="course" :key="course.name" :isBatchView="true" />
 						</router-link>
 					</div>
 				</div>

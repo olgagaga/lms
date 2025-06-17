@@ -105,35 +105,66 @@
 					<CourseInstructors :instructors="course.instructors" />
 				</div>
 
-				<div v-if="course.paid_course" class="font-semibold">
-					{{ course.price }}
-				</div>
-				<div
-					v-if="course.paid_certificate || course.enable_certification"
-					class="text-xs text-ink-blue-3 bg-surface-blue-1 py-0.5 px-1 rounded-md"
-				>
-					{{ __('Certification') }}
+				<div class="flex items-center space-x-2">
+					<Button
+						v-if="isBatchView && user?.data?.is_moderator"
+						variant="subtle"
+						size="sm"
+						@click.stop="openChapterVisibilityModal"
+					>
+						<template #prefix>
+							<Eye class="h-4 w-4" />
+						</template>
+						{{ __('Manage Visibility') }}
+					</Button>
+					<div v-if="course.paid_course" class="font-semibold">
+						{{ course.price }}
+					</div>
+					<div
+						v-if="course.paid_certificate || course.enable_certification"
+						class="text-xs text-ink-blue-3 bg-surface-blue-1 py-0.5 px-1 rounded-md"
+					>
+						{{ __('Certification') }}
+					</div>
 				</div>
 			</div>
 		</div>
 	</div>
+	<ChapterVisibilityModal
+		v-if="showChapterVisibilityModal"
+		v-model="showChapterVisibilityModal"
+		:course="course.name"
+		:batch="course.batch"
+		@close="showChapterVisibilityModal = false"
+	/>
 </template>
 <script setup>
-import { BookOpen, Users, Star } from 'lucide-vue-next'
+import { BookOpen, Users, Star, Eye } from 'lucide-vue-next'
 import UserAvatar from '@/components/UserAvatar.vue'
 import { sessionStore } from '@/stores/session'
-import { Badge, Tooltip } from 'frappe-ui'
+import { Badge, Tooltip, Button } from 'frappe-ui'
 import CourseInstructors from '@/components/CourseInstructors.vue'
 import ProgressBar from '@/components/ProgressBar.vue'
+import ChapterVisibilityModal from '@/components/Modals/ChapterVisibilityModal.vue'
+import { ref, inject } from 'vue'
 
-const { user } = sessionStore()
+const user = inject('$user')
+const showChapterVisibilityModal = ref(false)
 
 const props = defineProps({
 	course: {
 		type: Object,
-		default: null,
+		required: true,
 	},
+	isBatchView: {
+		type: Boolean,
+		default: false
+	}
 })
+
+const openChapterVisibilityModal = () => {
+	showChapterVisibilityModal.value = true
+}
 </script>
 <style>
 .course-image {

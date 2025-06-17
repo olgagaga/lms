@@ -1526,6 +1526,7 @@ def get_batch_courses(batch):
 	for course in course_list:
 		details = get_course_details(course.course)
 		details.batch_course = course.name
+		details.batch = batch
 		courses.append(details)
 
 	return courses
@@ -2272,3 +2273,57 @@ def get_course_lessons(course, batch):
 
 	frappe.logger().debug(f"Returning {len(lessons)} total lessons for course {course}")
 	return lessons
+
+
+@frappe.whitelist()
+def update_chapter_visibility(course, batch, visibility):
+	"""Update visibility of chapters in a batch"""
+	if not frappe.session.user or not frappe.db.exists("Has Role", {"parent": frappe.session.user, "role": "Moderator"}):
+		frappe.throw("Not permitted")
+
+	visibility = frappe.parse_json(visibility)
+	
+	# Get all lessons in the course
+	chapters = frappe.get_all(
+		"Chapter Reference",
+		{"parent": course},
+		["chapter"],
+		order_by="idx"
+	)
+	
+	for chapter in chapters:
+		lessons = frappe.get_all(
+			"Lesson Reference",
+			{"parent": chapter.chapter},
+			["lesson"],
+			order_by="idx"
+		)
+		
+		for lesson_ref in lessons:
+			lesson = frappe.get_doc("Course Lesson", lesson_ref.lesson)
+			
+			# Update visibility for this lesson in the batch
+			hidden = not visibility.get(chapter.chapter, True)
+			
+			# Check if visibility record exists
+			visibility_doc = frappe.db.get_value(
+				"Batch Lesson Visibility",
+				{"batch": batch, "lesson": lesson.name}
+			)
+			
+			if visibility_doc:
+				frappe.db.set_value(
+					"Batch Lesson Visibility",
+					visibility_doc,
+					"hidden_from_students",
+					hidden
+				)
+			else:
+				frappe.get_doc({
+					"doctype": "Batch Lesson Visibility",
+					"batch": batch,
+					"lesson": lesson.name,
+					"hidden_from_students": hidden
+				}).insert()
+
+	return {"success": True}

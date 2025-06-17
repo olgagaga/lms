@@ -70,16 +70,6 @@
 					</span>
 				</Button>
 			</router-link>
-			<Button
-      			v-if="isModerator"
-      			variant="solid"
-      			class="w-full mt-2"
-      			@click="showLessonVisibilityModal = true"
-    		>
-      			<span>
-        			{{ __('Manage Lesson Visibility') }}
-      			</span>
-    		</Button>
 			<router-link
 				:to="{
 					name: 'Billing',
@@ -129,11 +119,6 @@
 			</router-link>
 		</div>
 	</div>
-	<LessonVisibilityModal
-    v-if="showLessonVisibilityModal"
-    v-model="showLessonVisibilityModal"
-    :batch="batch.data.name"
-  />
 </template>
 <script setup>
 import { ref, inject, computed } from 'vue'
@@ -142,7 +127,6 @@ import { BookOpen, Clock, Globe } from 'lucide-vue-next'
 import { formatNumberIntoCurrency, formatTime } from '@/utils'
 import DateRange from '@/components/Common/DateRange.vue'
 import { useRouter } from 'vue-router'
-import LessonVisibilityModal from '@/components/Modals/LessonVisibilityModal.vue' 
 
 const router = useRouter()
 const user = inject('$user')
@@ -198,7 +182,5 @@ const isStudent = computed(() => {
 const isModerator = computed(() => {
 	return user.data?.is_moderator
 })
-
-const showLessonVisibilityModal = ref(false)
 
 </script>
