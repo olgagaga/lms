@@ -1455,77 +1455,97 @@ def update_lesson_visibility(batch, lesson, hidden):
 
 @frappe.whitelist()
 def get_course_chapters(course, batch):
-    """Get all chapters for a course with their visibility status in a batch"""
-    if not frappe.session.user or not frappe.db.exists("Has Role", {"parent": frappe.session.user, "role": "Moderator"}):
-        frappe.throw("Not permitted")
-
-    # Get all chapters in the course
-    chapters = frappe.get_all(
-        "Chapter Reference",
-        {"parent": course},
-        ["chapter"],
-        order_by="idx"
-    )
-    
-    result = []
-    for chapter in chapters:
-        chapter_doc = frappe.get_doc("Course Chapter", chapter.chapter)
+    """Get all chapters for a course with their visibility status for the batch"""
+    try:
+        frappe.logger().debug(f"Getting chapters for course: {course}, batch: {batch}")
         
-        # Get visibility status for this chapter in the batch
-        visibility = frappe.db.get_value(
-            "Batch Chapter Visibility",
-            {"batch": batch, "chapter": chapter.chapter},
-            "hidden_from_students"
+        # Get all chapters for the course from the Chapter Reference child table
+        chapters = frappe.get_all(
+            "Chapter Reference",
+            filters={"parent": course},
+            fields=["chapter", "idx"],
+            order_by="idx"
         )
         
-        result.append({
-            "name": chapter.chapter,
-            "title": chapter_doc.title,
-            "hidden_from_students": bool(visibility)
-        })
-
-    return result
+        frappe.logger().debug(f"Found {len(chapters)} chapter references")
+        
+        # Get the full chapter details
+        result = []
+        for chapter_ref in chapters:
+            chapter_doc = frappe.get_doc("Course Chapter", chapter_ref.chapter)
+            result.append({
+                "name": chapter_ref.chapter,
+                "title": chapter_doc.title,
+                "idx": chapter_ref.idx
+            })
+        
+        frappe.logger().debug(f"Processed {len(result)} chapters")
+        
+        # Get visibility settings for this batch
+        visibility_docs = frappe.get_all(
+            "Batch Chapter Visibility",
+            filters={
+                "batch": batch
+            },
+            fields=["chapter", "hidden_from_students"]
+        )
+        
+        frappe.logger().debug(f"Found {len(visibility_docs)} visibility settings")
+        
+        # Create a map of chapter visibility
+        visibility_map = {doc.chapter: doc.hidden_from_students for doc in visibility_docs}
+        
+        # Add visibility status to each chapter
+        for chapter in result:
+            chapter["hidden_from_students"] = visibility_map.get(chapter["name"], False)
+            frappe.logger().debug(f"Chapter {chapter['name']}: hidden={chapter['hidden_from_students']}")
+        
+        return result
+    except Exception as e:
+        frappe.logger().error(f"Error in get_course_chapters: {str(e)}")
+        frappe.logger().error(frappe.get_traceback())
+        raise
 
 
 @frappe.whitelist()
 def update_chapter_visibility(course, batch, visibility):
-    """Update visibility of chapters in a batch"""
-    if not frappe.session.user or not frappe.db.exists("Has Role", {"parent": frappe.session.user, "role": "Moderator"}):
-        frappe.throw("Not permitted")
-
-    visibility = frappe.parse_json(visibility)
-    
-    # Get all chapters in the course
-    chapters = frappe.get_all(
-        "Chapter Reference",
-        {"parent": course},
-        ["chapter"],
-        order_by="idx"
-    )
-    
-    for chapter in chapters:
-        # Update visibility for this chapter in the batch
-        hidden = not visibility.get(chapter.chapter, True)
+    """Update visibility settings for chapters in a batch"""
+    try:
+        frappe.logger().debug(f"Updating visibility for course: {course}, batch: {batch}")
+        frappe.logger().debug(f"Visibility data: {visibility}")
         
-        # Check if visibility record exists
-        visibility_doc = frappe.db.get_value(
-            "Batch Chapter Visibility",
-            {"batch": batch, "chapter": chapter.chapter}
-        )
+        visibility = json.loads(visibility)
         
-        if visibility_doc:
-            frappe.db.set_value(
+        for chapter, is_visible in visibility.items():
+            frappe.logger().debug(f"Processing chapter {chapter}: visible={is_visible}")
+            
+            # Check if visibility record exists
+            existing = frappe.get_all(
                 "Batch Chapter Visibility",
-                visibility_doc,
-                "hidden_from_students",
-                hidden
+                filters={
+                    "batch": batch,
+                    "chapter": chapter
+                }
             )
-        else:
-            frappe.get_doc({
-                "doctype": "Batch Chapter Visibility",
-                "batch": batch,
-                "chapter": chapter.chapter,
-                "hidden_from_students": hidden
-            }).insert()
-
-    return {"success": True}
+            
+            if existing:
+                frappe.logger().debug(f"Updating existing visibility record for chapter {chapter}")
+                doc = frappe.get_doc("Batch Chapter Visibility", existing[0].name)
+                doc.hidden_from_students = not is_visible
+                doc.save()
+            else:
+                frappe.logger().debug(f"Creating new visibility record for chapter {chapter}")
+                doc = frappe.get_doc({
+                    "doctype": "Batch Chapter Visibility",
+                    "batch": batch,
+                    "chapter": chapter,
+                    "hidden_from_students": not is_visible
+                })
+                doc.insert()
+        
+        frappe.db.commit()
+        return {"message": "Visibility updated successfully"}
+    except Exception as e:
+        frappe.logger().error(f"Error in update_chapter_visibility: {str(e)}")
+        frappe.logger().error(frappe.get_traceback())
+        raise
