@@ -198,7 +198,6 @@ const props = defineProps({
 	},
 })
 
-console.log('[CourseOutline] batch prop:', props.batch)
 const outline = createResource({
 	url: 'lms.lms.utils.get_course_outline',
 	cache: ['course_outline', props.courseName, props.batch],

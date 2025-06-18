@@ -258,7 +258,7 @@
 					:courseName="courseName"
 					:key="chapterNumber"
 					:getProgress="lesson.data.membership ? true : false"
-					:batch="lesson.data.membership?.batch_old || null"
+					:batch="batch"
 				/>
 			</div>
 		</div>
@@ -317,6 +317,7 @@ const discussionsContainer = ref(null)
 const timer = ref(0)
 const { brand } = sessionStore()
 let timerInterval
+const batch = ref(null)
 
 const props = defineProps({
 	courseName: {
@@ -471,10 +472,25 @@ watch(
 
 watch(
 	() => lesson.data,
-	(data) => {
-		setupLesson(data)
+	async (newVal) => {
+		console.log('[Lesson] lesson.data.membership:', newVal?.membership)
+		console.log('[Lesson] lesson.data.membership?.batch_old:', newVal?.membership?.batch_old)
+		if (newVal?.membership?.batch_old) {
+			batch.value = newVal.membership.batch_old
+		} else if (user.data) {
+			// Fallback: fetch from LMS Batch Enrollment
+			const response = await fetch(`/api/resource/LMS Batch Enrollment?fields=["batch"]&filters=[["member","=","${user.data.name}"]]`)
+			const data = await response.json()
+			if (data?.data?.length > 0) {
+				batch.value = data.data[0].batch
+			} else {
+				batch.value = null
+			}
+		}
+		setupLesson(newVal)
 		enablePlyr()
-	}
+	},
+	{ immediate: true, deep: true }
 )
 
 const startTimer = () => {

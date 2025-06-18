@@ -1325,83 +1325,99 @@ def get_course_outline(course, progress=False, batch=None):
 
 @frappe.whitelist(allow_guest=True)
 def get_lesson(course, chapter, lesson):
-	chapter_name = frappe.db.get_value(
-		"Chapter Reference", {"parent": course, "idx": chapter}, "chapter"
-	)
-	lesson_name = frappe.db.get_value(
-		"Lesson Reference", {"parent": chapter_name, "idx": lesson}, "lesson"
-	)
-	lesson_details = frappe.db.get_value(
-		"Course Lesson",
-		lesson_name,
-		["include_in_preview", "title", "is_scorm_package"],
-		as_dict=1,
-	)
-	if not lesson_details or lesson_details.is_scorm_package:
-		return {}
+    chapter_name = frappe.db.get_value(
+        "Chapter Reference", {"parent": course, "idx": chapter}, "chapter"
+    )
+    lesson_name = frappe.db.get_value(
+        "Lesson Reference", {"parent": chapter_name, "idx": lesson}, "lesson"
+    )
+    lesson_details = frappe.db.get_value(
+        "Course Lesson",
+        lesson_name,
+        ["include_in_preview", "title", "is_scorm_package"],
+        as_dict=1,
+    )
+    if not lesson_details or lesson_details.is_scorm_package:
+        return {}
 
-	membership = get_membership(course)
-	course_info = frappe.db.get_value(
-		"LMS Course",
-		course,
-		["title", "paid_certificate", "disable_self_learning"],
-		as_dict=1,
-	)
+    # Updated membership logic (same as get_course_details)
+    membership = frappe.db.get_value(
+        "LMS Enrollment",
+        {"member": frappe.session.user, "course": course},
+        ["name", "course", "current_lesson", "progress", "member", "batch_old"],
+        as_dict=1,
+    )
+    if membership and not membership.get("batch_old"):
+        batch_enrollment = frappe.db.get_value(
+            "LMS Batch Enrollment",
+            {"member": frappe.session.user},
+            ["batch"],
+            as_dict=1,
+        )
+        if batch_enrollment:
+            membership["batch_old"] = batch_enrollment["batch"]
 
-	if (
-		not lesson_details.include_in_preview
-		and not membership
-		and not has_course_moderator_role()
-		and not is_instructor(course)
-	):
-		return {
-			"no_preview": 1,
-			"title": lesson_details.title,
-			"course_title": course_info.title,
-			"disable_self_learning": course_info.disable_self_learning,
-		}
+    course_info = frappe.db.get_value(
+        "LMS Course",
+        course,
+        ["title", "paid_certificate", "disable_self_learning"],
+        as_dict=1,
+    )
 
-	lesson_details = frappe.db.get_value(
-		"Course Lesson",
-		lesson_name,
-		[
-			"name",
-			"title",
-			"include_in_preview",
-			"is_hidden",
-			"body",
-			"creation",
-			"youtube",
-			"quiz_id",
-			"question",
-			"file_type",
-			"instructor_notes",
-			"course",
-			"content",
-			"instructor_content",
-		],
-		as_dict=True,
-	)
+    if (
+        not lesson_details.include_in_preview
+        and not membership
+        and not has_course_moderator_role()
+        and not is_instructor(course)
+    ):
+        return {
+            "no_preview": 1,
+            "title": lesson_details.title,
+            "course_title": course_info.title,
+            "disable_self_learning": course_info.disable_self_learning,
+        }
 
-	if frappe.session.user == "Guest":
-		progress = 0
-	else:
-		progress = get_progress(course, lesson_details.name)
+    lesson_details = frappe.db.get_value(
+        "Course Lesson",
+        lesson_name,
+        [
+            "name",
+            "title",
+            "include_in_preview",
+            "is_hidden",
+            "body",
+            "creation",
+            "youtube",
+            "quiz_id",
+            "question",
+            "file_type",
+            "instructor_notes",
+            "course",
+            "content",
+            "instructor_content",
+        ],
+        as_dict=True,
+    )
 
-	lesson_details.chapter_title = frappe.db.get_value(
-		"Course Chapter", chapter_name, "title"
-	)
-	lesson_details.rendered_content = render_html(lesson_details)
-	neighbours = get_neighbour_lesson(course, chapter, lesson)
-	lesson_details.next = neighbours["next"]
-	lesson_details.progress = progress
-	lesson_details.prev = neighbours["prev"]
-	lesson_details.membership = membership
-	lesson_details.instructors = get_instructors("LMS Course", course)
-	lesson_details.course_title = course_info.title
-	lesson_details.paid_certificate = course_info.paid_certificate
-	lesson_details.disable_self_learning = course_info.disable_self_learning
-	return lesson_details
+    if frappe.session.user == "Guest":
+        progress = 0
+    else:
+        progress = get_progress(course, lesson_details.name)
+
+    lesson_details.chapter_title = frappe.db.get_value(
+        "Course Chapter", chapter_name, "title"
+    )
+    lesson_details.rendered_content = render_html(lesson_details)
+    neighbours = get_neighbour_lesson(course, chapter, lesson)
+    lesson_details.next = neighbours["next"]
+    lesson_details.progress = progress
+    lesson_details.prev = neighbours["prev"]
+    lesson_details.membership = membership
+    lesson_details.instructors = get_instructors("LMS Course", course)
+    lesson_details.course_title = course_info.title
+    lesson_details.paid_certificate = course_info.paid_certificate
+    lesson_details.disable_self_learning = course_info.disable_self_learning
+    return lesson_details
 
 
 def get_neighbour_lesson(course, chapter, lesson):
