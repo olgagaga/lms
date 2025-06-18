@@ -126,8 +126,6 @@ const chapters = createResource({
 	},
 	auto: false, // Changed to false to control when it loads
 	onSuccess(data) {
-		console.log('Chapters loaded successfully:', data)
-		console.log('Current debug state:', debugState.value)
 		nextTick(() => {
 			console.log('After nextTick - chaptersData:', chaptersData.value)
 			const modal = document.querySelector('.frappe-ui-dialog')
@@ -236,9 +234,17 @@ const updateChapterVisibility = (chapter, isVisible) => {
 			visibility: JSON.stringify({ [chapter.name]: isVisible }),
 		},
 		onSuccess(data) {
-			console.log('[event] Visibility updated successfully:', data)
-			chapter.hidden_from_students = !isVisible
-			chapters.reload()
+			console.log('[event] Visibility updated successfully:', data);
+			// Find the index of the chapter
+			const idx = chapters.data.findIndex(c => c.name === chapter.name);
+			if (idx !== -1) {
+				// Replace the object to trigger reactivity
+				chapters.data[idx] = {
+					...chapters.data[idx],
+					hidden_from_students: !isVisible,
+				};
+			}
+			// chapters.reload()
 		},
 		onError(error) {
 			console.error('[event] Error updating visibility:', error)

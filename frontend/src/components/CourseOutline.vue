@@ -341,12 +341,4 @@ const isActiveLesson = (lessonNumber) => {
 	)
 }
 
-// Debug: Log outline data when it changes
-watch(
-	() => outline.data,
-	(newVal) => {
-		console.debug('[CourseOutline] outline.data:', newVal)
-	},
-	{ immediate: true, deep: true }
-)
 </script>

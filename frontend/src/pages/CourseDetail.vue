@@ -146,8 +146,6 @@ usePageMeta(() => {
 watch(
 	() => course.data,
 	(newVal) => {
-		console.log('[CourseDetail] course.data.membership:', newVal?.membership)
-		console.log('[CourseDetail] course.data.membership?.batch_old:', newVal?.membership?.batch_old)
 	},
 	{ immediate: true, deep: true }
 )

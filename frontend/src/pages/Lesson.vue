@@ -473,8 +473,6 @@ watch(
 watch(
 	() => lesson.data,
 	async (newVal) => {
-		console.log('[Lesson] lesson.data.membership:', newVal?.membership)
-		console.log('[Lesson] lesson.data.membership?.batch_old:', newVal?.membership?.batch_old)
 		if (newVal?.membership?.batch_old) {
 			batch.value = newVal.membership.batch_old
 		} else if (user.data) {

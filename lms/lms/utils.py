@@ -1202,28 +1202,23 @@ def get_course_details(course):
         )
 
     if frappe.session.user == "Guest":
-        print("User is Guest")
         course_details.membership = None
         course_details.is_instructor = False
     else:
-        print("User is not Guest")
         membership = frappe.db.get_value(
             "LMS Enrollment",
             {"member": frappe.session.user, "course": course_details.name},
             ["name", "course", "current_lesson", "progress", "member", "batch_old"],
             as_dict=1,
         )
-        print("membership ", membership)
         # If batch_old is missing, try to get it from LMS Batch Enrollment
         if membership and not membership.get("batch_old"):
-            print("membership is not None")
             batch_enrollment = frappe.db.get_value(
                 "LMS Batch Enrollment",
                 {"member": frappe.session.user},
                 ["batch"],
                 as_dict=1,
             )
-            print("batch_enrollment", batch_enrollment)
             if batch_enrollment:
                 membership["batch_old"] = batch_enrollment["batch"]
         course_details.membership = membership
@@ -1278,13 +1273,10 @@ def get_categorized_courses(courses):
 @frappe.whitelist(allow_guest=True)
 def get_course_outline(course, progress=False, batch=None):
     """Returns the course outline, filtering chapters by batch visibility if batch is provided."""
-    print(batch)
-    print(f"get_course_outline called with course={course}, batch={batch}")
     outline = []
     chapters = frappe.get_all(
         "Chapter Reference", {"parent": course}, ["chapter", "idx"], order_by="idx"
     )
-    print(f"Found chapters: {[c['chapter'] for c in chapters]}")
 
     # If batch is provided, get hidden chapters for this batch
     hidden_chapters = set()
@@ -1295,11 +1287,9 @@ def get_course_outline(course, progress=False, batch=None):
             fields=["chapter"]
         )
         hidden_chapters = {doc["chapter"] for doc in hidden_chapter_docs}
-        print(f"Hidden chapters for batch {batch}: {hidden_chapters}")
 
     for chapter in chapters:
         if batch and chapter["chapter"] in hidden_chapters:
-            print(f"Skipping hidden chapter: {chapter['chapter']}")
             continue  # Skip hidden chapters for this batch
         chapter_details = frappe.db.get_value(
             "Course Chapter",
@@ -1319,7 +1309,6 @@ def get_course_outline(course, progress=False, batch=None):
             )
 
         outline.append(chapter_details)
-    print(f"Returning chapters: {[c['name'] for c in outline]}")
     return outline
 
 
