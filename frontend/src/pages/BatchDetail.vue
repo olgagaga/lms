@@ -66,7 +66,7 @@
 	</div>
 </template>
 <script setup>
-import { computed, inject } from 'vue'
+import { computed, inject, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { BookOpen, Clock } from 'lucide-vue-next'
 import { formatTime } from '@/utils'
@@ -110,7 +110,15 @@ const courses = createResource({
 	},
 	cache: ['batchCourses', props.batchName],
 	auto: true,
+	onSuccess(data) {
+		console.log('Batch courses loaded:', data)
+	}
 })
+
+// Add a watch to monitor courses data
+watch(() => courses.data, (newCourses) => {
+	console.log('Courses data changed:', newCourses)
+}, { deep: true })
 
 const breadcrumbs = computed(() => {
 	let items = [{ label: 'Batches', route: { name: 'Batches' } }]

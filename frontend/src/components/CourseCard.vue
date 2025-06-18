@@ -159,7 +159,7 @@ import { Badge, Tooltip, Button } from 'frappe-ui'
 import CourseInstructors from '@/components/CourseInstructors.vue'
 import ProgressBar from '@/components/ProgressBar.vue'
 import ChapterVisibilityModal from '@/components/Modals/ChapterVisibilityModal.vue'
-import { ref, inject } from 'vue'
+import { ref, inject, watch } from 'vue'
 
 const user = inject('$user')
 const showChapterVisibilityModal = ref(false)
@@ -176,8 +176,18 @@ const props = defineProps({
 })
 
 const openChapterVisibilityModal = () => {
+	console.log('Opening chapter visibility modal with course:', {
+		name: props.course.name,
+		batch: props.course.batch,
+		isBatchView: props.isBatchView
+	})
 	showChapterVisibilityModal.value = true
 }
+
+// Add a watch to monitor course changes
+watch(() => props.course, (newCourse) => {
+	console.log('Course data changed:', newCourse)
+}, { deep: true })
 </script>
 <style>
 .course-image {
