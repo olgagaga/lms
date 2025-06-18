@@ -111,8 +111,13 @@ console.log('ChapterVisibilityModal props:', {
 
 // Create a reactive computed property for chapters data
 const chaptersData = computed(() => {
-	console.log('[computed] chaptersData:', chapters.data, 'isArray:', Array.isArray(chapters.data))
-	return Array.isArray(chapters.data) ? [...chapters.data] : []
+	// Normalize hidden_from_students to boolean
+	return Array.isArray(chapters.data)
+		? chapters.data.map(chapter => ({
+			...chapter,
+			hidden_from_students: Boolean(chapter.hidden_from_students),
+		}))
+		: []
 })
 
 // Computed property to help debug the current state

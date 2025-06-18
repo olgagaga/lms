@@ -1,7 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "format:####",
+ "autoname": "field:batch_chapter_id",
  "creation": "2024-03-19 10:00:00.000000",
  "doctype": "DocType",
  "editable_grid": 1,
@@ -37,6 +37,13 @@
    "fieldtype": "Check",
    "in_list_view": 1,
    "label": "Hidden from Students"
+  },
+  {
+   "fieldname": "batch_chapter_id",
+   "fieldtype": "Data",
+   "label": "Batch-Chapter ID",
+   "read_only": 1,
+   "unique": 1
   },
   {
    "fieldname": "modified",

@@ -1518,29 +1518,31 @@ def update_chapter_visibility(course, batch, visibility):
         
         for chapter, is_visible in visibility.items():
             frappe.logger().debug(f"Processing chapter {chapter}: visible={is_visible}")
-            
-            # Check if visibility record exists
-            existing = frappe.get_all(
+            batch_chapter_id = f"{batch}-{chapter}"
+            hidden_value = int(not is_visible)
+            existing_name = frappe.db.get_value(
                 "Batch Chapter Visibility",
-                filters={
-                    "batch": batch,
-                    "chapter": chapter
-                }
+                {"batch_chapter_id": batch_chapter_id},
+                "name"
             )
-            
-            if existing:
+            if existing_name:
                 frappe.logger().debug(f"Updating existing visibility record for chapter {chapter}")
-                doc = frappe.get_doc("Batch Chapter Visibility", existing[0].name)
-                doc.hidden_from_students = not is_visible
-                doc.save()
+                frappe.db.set_value(
+                    "Batch Chapter Visibility",
+                    existing_name,
+                    {
+                        "hidden_from_students": hidden_value,
+                        "batch": batch,
+                        "chapter": chapter
+                    }
+                )
             else:
                 frappe.logger().debug(f"Creating new visibility record for chapter {chapter}")
-                doc = frappe.get_doc({
-                    "doctype": "Batch Chapter Visibility",
-                    "batch": batch,
-                    "chapter": chapter,
-                    "hidden_from_students": not is_visible
-                })
+                doc = frappe.new_doc("Batch Chapter Visibility")
+                doc.batch = batch
+                doc.chapter = chapter
+                doc.hidden_from_students = hidden_value
+                doc.batch_chapter_id = batch_chapter_id
                 doc.insert()
         
         frappe.db.commit()
