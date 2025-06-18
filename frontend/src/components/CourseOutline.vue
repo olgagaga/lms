@@ -148,7 +148,7 @@
 </template>
 <script setup>
 import { Button, createResource, Tooltip, toast } from 'frappe-ui'
-import { getCurrentInstance, inject, ref } from 'vue'
+import { getCurrentInstance, inject, ref, watch } from 'vue'
 import Draggable from 'vuedraggable'
 import { Disclosure, DisclosureButton, DisclosurePanel } from '@headlessui/vue'
 import {
@@ -192,14 +192,20 @@ const props = defineProps({
 		type: Boolean,
 		default: false,
 	},
+	batch: {
+		type: String,
+		default: null,
+	},
 })
 
+console.log('[CourseOutline] batch prop:', props.batch)
 const outline = createResource({
 	url: 'lms.lms.utils.get_course_outline',
-	cache: ['course_outline', props.courseName],
+	cache: ['course_outline', props.courseName, props.batch],
 	params: {
 		course: props.courseName,
 		progress: props.getProgress,
+		batch: props.batch,
 	},
 	auto: true,
 })
@@ -335,4 +341,13 @@ const isActiveLesson = (lessonNumber) => {
 		route.params.lessonNumber == lessonNumber.split('.')[1]
 	)
 }
+
+// Debug: Log outline data when it changes
+watch(
+	() => outline.data,
+	(newVal) => {
+		console.debug('[CourseOutline] outline.data:', newVal)
+	},
+	{ immediate: true, deep: true }
+)
 </script>

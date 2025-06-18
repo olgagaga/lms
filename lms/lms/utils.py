@@ -1164,64 +1164,76 @@ def get_course_fields():
 
 @frappe.whitelist(allow_guest=True)
 def get_course_details(course):
-	course_details = frappe.db.get_value(
-		"LMS Course",
-		course,
-		[
-			"name",
-			"title",
-			"tags",
-			"description",
-			"image",
-			"video_link",
-			"short_introduction",
-			"published",
-			"upcoming",
-			"featured",
-			"disable_self_learning",
-			"published_on",
-			"category",
-			"status",
-			"paid_course",
-			"paid_certificate",
-			"course_price",
-			"currency",
-			"amount_usd",
-			"enable_certification",
-			"lessons",
-			"enrollments",
-			"rating",
-		],
-		as_dict=1,
-	)
+    course_details = frappe.db.get_value(
+        "LMS Course",
+        course,
+        [
+            "name",
+            "title",
+            "tags",
+            "description",
+            "image",
+            "video_link",
+            "short_introduction",
+            "published",
+            "upcoming",
+            "featured",
+            "disable_self_learning",
+            "published_on",
+            "category",
+            "status",
+            "paid_course",
+            "paid_certificate",
+            "course_price",
+            "currency",
+            "amount_usd",
+            "enable_certification",
+            "lessons",
+            "enrollments",
+            "rating",
+        ],
+        as_dict=1,
+    )
 
-	course_details.instructors = get_instructors("LMS Course", course_details.name)
-	# course_details.is_instructor = is_instructor(course_details.name)
-	if course_details.paid_course or course_details.paid_certificate:
-		"""course_details.course_price, course_details.currency = check_multicurrency(
-		        course_details.course_price, course_details.currency, None, course_details.amount_usd
-		)"""
-		course_details.price = fmt_money(
-			course_details.course_price, 0, course_details.currency
-		)
+    course_details.instructors = get_instructors("LMS Course", course_details.name)
+    if course_details.paid_course or course_details.paid_certificate:
+        course_details.price = fmt_money(
+            course_details.course_price, 0, course_details.currency
+        )
 
-	if frappe.session.user == "Guest":
-		course_details.membership = None
-		course_details.is_instructor = False
-	else:
-		course_details.membership = frappe.db.get_value(
-			"LMS Enrollment",
-			{"member": frappe.session.user, "course": course_details.name},
-			["name", "course", "current_lesson", "progress", "member"],
-			as_dict=1,
-		)
+    if frappe.session.user == "Guest":
+        print("User is Guest")
+        course_details.membership = None
+        course_details.is_instructor = False
+    else:
+        print("User is not Guest")
+        membership = frappe.db.get_value(
+            "LMS Enrollment",
+            {"member": frappe.session.user, "course": course_details.name},
+            ["name", "course", "current_lesson", "progress", "member", "batch_old"],
+            as_dict=1,
+        )
+        print("membership ", membership)
+        # If batch_old is missing, try to get it from LMS Batch Enrollment
+        if membership and not membership.get("batch_old"):
+            print("membership is not None")
+            batch_enrollment = frappe.db.get_value(
+                "LMS Batch Enrollment",
+                {"member": frappe.session.user},
+                ["batch"],
+                as_dict=1,
+            )
+            print("batch_enrollment", batch_enrollment)
+            if batch_enrollment:
+                membership["batch_old"] = batch_enrollment["batch"]
+        course_details.membership = membership
 
-	if course_details.membership and course_details.membership.current_lesson:
-		course_details.current_lesson = get_lesson_index(
-			course_details.membership.current_lesson
-		)
+    if course_details.membership and course_details.membership.get("current_lesson"):
+        course_details.current_lesson = get_lesson_index(
+            course_details.membership.current_lesson
+        )
 
-	return course_details
+    return course_details
 
 
 def get_categorized_courses(courses):
@@ -1264,32 +1276,51 @@ def get_categorized_courses(courses):
 
 
 @frappe.whitelist(allow_guest=True)
-def get_course_outline(course, progress=False):
-	"""Returns the course outline."""
-	outline = []
-	chapters = frappe.get_all(
-		"Chapter Reference", {"parent": course}, ["chapter", "idx"], order_by="idx"
-	)
-	for chapter in chapters:
-		chapter_details = frappe.db.get_value(
-			"Course Chapter",
-			chapter.chapter,
-			["name", "title", "is_scorm_package", "launch_file", "scorm_package"],
-			as_dict=True,
-		)
-		chapter_details["idx"] = chapter.idx
-		chapter_details.lessons = get_lessons(course, chapter_details, progress=progress)
+def get_course_outline(course, progress=False, batch=None):
+    """Returns the course outline, filtering chapters by batch visibility if batch is provided."""
+    print(batch)
+    print(f"get_course_outline called with course={course}, batch={batch}")
+    outline = []
+    chapters = frappe.get_all(
+        "Chapter Reference", {"parent": course}, ["chapter", "idx"], order_by="idx"
+    )
+    print(f"Found chapters: {[c['chapter'] for c in chapters]}")
 
-		if chapter_details.is_scorm_package:
-			chapter_details.scorm_package = frappe.db.get_value(
-				"File",
-				chapter_details.scorm_package,
-				["file_name", "file_size", "file_url"],
-				as_dict=1,
-			)
+    # If batch is provided, get hidden chapters for this batch
+    hidden_chapters = set()
+    if batch:
+        hidden_chapter_docs = frappe.get_all(
+            "Batch Chapter Visibility",
+            filters={"batch": batch, "hidden_from_students": 1},
+            fields=["chapter"]
+        )
+        hidden_chapters = {doc["chapter"] for doc in hidden_chapter_docs}
+        print(f"Hidden chapters for batch {batch}: {hidden_chapters}")
 
-		outline.append(chapter_details)
-	return outline
+    for chapter in chapters:
+        if batch and chapter["chapter"] in hidden_chapters:
+            print(f"Skipping hidden chapter: {chapter['chapter']}")
+            continue  # Skip hidden chapters for this batch
+        chapter_details = frappe.db.get_value(
+            "Course Chapter",
+            chapter.chapter,
+            ["name", "title", "is_scorm_package", "launch_file", "scorm_package"],
+            as_dict=True,
+        )
+        chapter_details["idx"] = chapter.idx
+        chapter_details["lessons"] = get_lessons(course, chapter_details, progress=progress)
+
+        if chapter_details["is_scorm_package"]:
+            chapter_details["scorm_package"] = frappe.db.get_value(
+                "File",
+                chapter_details["scorm_package"],
+                ["file_name", "file_size", "file_url"],
+                as_dict=1,
+            )
+
+        outline.append(chapter_details)
+    print(f"Returning chapters: {[c['name'] for c in outline]}")
+    return outline
 
 
 @frappe.whitelist(allow_guest=True)

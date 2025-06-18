@@ -7,21 +7,6 @@
 		}"
 	>
 		<template #body-content>
-			<!-- Debug info -->
-			<div class="text-xs text-gray-500 mb-4">
-				<div>Loading: {{ chapters.loading }}</div>
-				<div>Has Error: {{ !!chapters.error }}</div>
-				<div>Has Data: {{ !!chapters.data }}</div>
-				<div>Data Length: {{ chaptersData?.length }}</div>
-				<div>First Chapter: {{ chaptersData?.[0]?.title }}</div>
-				<div>Course: {{ course }}</div>
-				<div>Batch: {{ batch }}</div>
-				<div>typeof chaptersData: {{ typeof chaptersData }}</div>
-				<div>typeof chaptersData.value: {{ typeof chaptersData?.value }}</div>
-				<div>isProxy: {{ chaptersData && chaptersData.constructor && chaptersData.constructor.name === 'Proxy' }}</div>
-				<div>chaptersData (stringified): {{ JSON.stringify(chaptersData) }}</div>
-				<div>chaptersData.value (stringified): {{ JSON.stringify(chaptersData?.value) }}</div>
-			</div>
 
 			<div class="space-y-4">
 				<!-- Loading State -->

@@ -258,6 +258,7 @@
 					:courseName="courseName"
 					:key="chapterNumber"
 					:getProgress="lesson.data.membership ? true : false"
+					:batch="lesson.data.membership?.batch_old || null"
 				/>
 			</div>
 		</div>

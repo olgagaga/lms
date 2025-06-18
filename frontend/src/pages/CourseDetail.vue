@@ -76,6 +76,7 @@
 							:title="__('Course Outline')"
 							:courseName="course.data.name"
 							:showOutline="true"
+							:batch="course.data.membership?.batch_old || null"
 						/>
 					</div>
 					<CourseReviews
@@ -99,7 +100,7 @@ import {
 	Tooltip,
 	usePageMeta,
 } from 'frappe-ui'
-import { computed } from 'vue'
+import { computed, watch } from 'vue'
 import { Users, Star } from 'lucide-vue-next'
 import { sessionStore } from '@/stores/session'
 import CourseCardOverlay from '@/components/CourseCardOverlay.vue'
@@ -141,6 +142,15 @@ usePageMeta(() => {
 		icon: brand.favicon,
 	}
 })
+
+watch(
+	() => course.data,
+	(newVal) => {
+		console.log('[CourseDetail] course.data.membership:', newVal?.membership)
+		console.log('[CourseDetail] course.data.membership?.batch_old:', newVal?.membership?.batch_old)
+	},
+	{ immediate: true, deep: true }
+)
 </script>
 <style>
 .avatar-group {
