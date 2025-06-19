@@ -249,6 +249,8 @@
 					<QuizNavigation
 						:total-questions="questions.length"
 						:current-question="activeQuestion"
+						:question-statuses="questionStatuses"
+						:show-answers="quiz.data?.show_answers"
 						@navigate="navigateToQuestion"
 					/>
 				</div>
@@ -345,6 +347,9 @@ const router = useRouter()
 const fillInAnswers = ref([])
 const parsedFillInQuestion = ref([])
 
+// Add question statuses tracking
+const questionStatuses = reactive([])
+
 const props = defineProps({
 	quizName: {
 		type: String,
@@ -371,6 +376,18 @@ const quiz = createResource({
 	},
 })
 
+// Initialize question statuses when questions are populated
+const initializeQuestionStatuses = () => {
+	questionStatuses.splice(0, questionStatuses.length)
+	questions.forEach(() => {
+		questionStatuses.push({
+			answered: false,
+			isCorrect: null
+		})
+	})
+}
+
+// Update the populateQuestions function
 const populateQuestions = () => {
 	let data = quiz.data
 	if (data.shuffle_questions) {
@@ -381,6 +398,7 @@ const populateQuestions = () => {
 	} else {
 		questions = data.questions
 	}
+	initializeQuestionStatuses()
 }
 
 const setupTimer = () => {
@@ -575,6 +593,7 @@ const getAnswers = () => {
 	}
 }
 
+// Update checkAnswer function to track question status
 const checkAnswer = () => {
 	let answers = getAnswers()
 	if (questionDetails.data.type === 'Choices' && !answers.length) {
@@ -582,6 +601,10 @@ const checkAnswer = () => {
 		return
 	}
 	if (questionDetails.data.type === 'Fill In' && !answers.length) {
+		return
+	}
+	if (questionDetails.data.type === 'User Input' && !answers[0]) {
+		toast.warning(__('Please enter an answer'))
 		return
 	}
 
@@ -605,10 +628,35 @@ const checkAnswer = () => {
 						showAnswers[index] = undefined
 					}
 				})
+				// Update question status for multiple choice
+				const isCorrect = data.every((val, idx) => !selectedOptions[idx] || val === 1)
+				questionStatuses[activeQuestion.value - 1] = {
+					answered: true,
+					isCorrect: quiz.data.show_answers ? isCorrect : null
+				}
 			} else if (type == 'Fill In') {
 				showAnswers.splice(0, showAnswers.length, ...data)
+				// Update question status for fill in
+				const isCorrect = data.every(val => val === true)
+				questionStatuses[activeQuestion.value - 1] = {
+					answered: true,
+					isCorrect: quiz.data.show_answers ? isCorrect : null
+				}
+			} else if (type == 'User Input') {
+				showAnswers.splice(0, showAnswers.length, data)
+				// Update question status for user input
+				const isCorrect = data === true
+				questionStatuses[activeQuestion.value - 1] = {
+					answered: true,
+					isCorrect: quiz.data.show_answers ? isCorrect : null
+				}
 			} else {
 				showAnswers.push(data)
+				// Update question status for other types (Open Ended)
+				questionStatuses[activeQuestion.value - 1] = {
+					answered: true,
+					isCorrect: null // Open ended questions don't have correct/incorrect status
+				}
 			}
 			addToLocalStorage()
 			if (!quiz.data.show_answers) {
@@ -738,7 +786,13 @@ const getSubmissionColumns = () => {
 	]
 }
 
+// Update navigateToQuestion function
 const navigateToQuestion = (index) => {
+	if (quiz.data.show_answers && questionStatuses[index - 1]?.answered) {
+		// Don't allow navigation to answered questions when show_answers is enabled
+		return
+	}
+
 	if (quiz.data.show_answers || questionDetails.data?.type == 'Open Ended') {
 		activeQuestion.value = index
 		selectedOptions.splice(0, selectedOptions.length, ...[0, 0, 0, 0])
@@ -748,6 +802,17 @@ const navigateToQuestion = (index) => {
 	} else {
 		// Save current answer before navigating
 		if (questionDetails.data?.type == 'Open Ended') {
+			addToLocalStorage()
+			questionStatuses[activeQuestion.value - 1] = {
+				answered: true,
+				isCorrect: null
+			}
+		} else if (questionDetails.data?.type == 'User Input' && possibleAnswer.value) {
+			// For User Input questions, mark as answered if there's an answer
+			questionStatuses[activeQuestion.value - 1] = {
+				answered: true,
+				isCorrect: null
+			}
 			addToLocalStorage()
 		} else {
 			checkAnswer()
