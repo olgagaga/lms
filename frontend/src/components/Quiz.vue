@@ -689,12 +689,34 @@ const nextQuestion = () => {
 	if (!quiz.data.show_answers && questionDetails.data?.type != 'Open Ended') {
 		checkAnswer()
 	} else {
+		// Save current answer before moving to next question
 		if (questionDetails.data?.type == 'Open Ended') {
 			addToLocalStorage()
 			questionStatuses[activeQuestion.value - 1] = {
 				answered: true,
 				isCorrect: null
 			}
+		} else if (questionDetails.data?.type == 'User Input' && possibleAnswer.value) {
+			// For User Input questions, mark as answered if there's an answer
+			questionStatuses[activeQuestion.value - 1] = {
+				answered: true,
+				isCorrect: null
+			}
+			addToLocalStorage()
+		} else if (questionDetails.data?.type == 'Choices' && selectedOptions.some(option => option)) {
+			// For Choices questions, mark as answered if any option is selected
+			questionStatuses[activeQuestion.value - 1] = {
+				answered: true,
+				isCorrect: null
+			}
+			addToLocalStorage()
+		} else if (questionDetails.data?.type == 'Fill In' && fillInAnswers.value.some(answer => answer && answer.trim())) {
+			// For Fill In questions, mark as answered if any blank is filled
+			questionStatuses[activeQuestion.value - 1] = {
+				answered: true,
+				isCorrect: null
+			}
+			addToLocalStorage()
 		}
 		
 		// Find the next unanswered question
@@ -825,39 +847,12 @@ const navigateToQuestion = (index) => {
 		return
 	}
 
-	if (quiz.data.show_answers || questionDetails.data?.type == 'Open Ended') {
-		activeQuestion.value = index
-		selectedOptions.splice(0, selectedOptions.length, ...[0, 0, 0, 0])
-		showAnswers.length = 0
-		possibleAnswer.value = null
-		fillInAnswers.value = []
-	} else {
-		// Save current answer before navigating
-		if (questionDetails.data?.type == 'Open Ended') {
-			addToLocalStorage()
-			questionStatuses[activeQuestion.value - 1] = {
-				answered: true,
-				isCorrect: null
-			}
-		} else if (questionDetails.data?.type == 'User Input' && possibleAnswer.value) {
-			// For User Input questions, mark as answered if there's an answer
-			questionStatuses[activeQuestion.value - 1] = {
-				answered: true,
-				isCorrect: null
-			}
-			addToLocalStorage()
-		} else {
-			checkAnswer()
-		}
-		// Navigate after a short delay to ensure answer is saved
-		setTimeout(() => {
-			activeQuestion.value = index
-			selectedOptions.splice(0, selectedOptions.length, ...[0, 0, 0, 0])
-			showAnswers.length = 0
-			possibleAnswer.value = null
-			fillInAnswers.value = []
-		}, 500)
-	}
+	// Simply navigate to the question without saving current answer
+	activeQuestion.value = index
+	selectedOptions.splice(0, selectedOptions.length, ...[0, 0, 0, 0])
+	showAnswers.length = 0
+	possibleAnswer.value = null
+	fillInAnswers.value = []
 }
 </script>
 <style>
