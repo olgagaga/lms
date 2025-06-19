@@ -490,7 +490,7 @@ watch(questionDetails, (newValue) => {
 				toast.error(__('Error: Text with blanks is missing'))
 				return
 			}
-			const blankCount = newValue.data.text_with_blanks.match(/__(\d+)__/g)?.length || 0
+			const blankCount = newValue.data.text_with_blanks.match(/\\__(\d+)__/g)?.length || 0
 			fillInAnswers.value = new Array(blankCount).fill('')
 			parsedFillInQuestion.value = parseFillInQuestion(newValue.data.text_with_blanks)
 			
@@ -530,7 +530,7 @@ const stripHtml = (html) => {
 
 const parseFillInQuestion = (question) => {
 	const parts = []
-	let regex = /__(\d+)__/g
+	let regex = /\\__(\d+)__/g
 	let lastIndex = 0
 	let match
 	const cleanQuestion = stripHtml(question)
@@ -546,19 +546,6 @@ const parseFillInQuestion = (question) => {
 		parts.push({ type: 'text', value: cleanQuestion.slice(lastIndex) })
 	}
 	return parts
-}
-
-const formatFillInQuestion = (question) => {
-	// Replace __n__ with input fields
-	return question.replace(/__(\d+)__/g, (match, number) => {
-		return `<input 
-			type="text" 
-			v-model="fillInAnswers[${number - 1}]" 
-			:disabled="showAnswers.length ? true : false"
-			class="inline-block w-32 px-2 py-1 mx-1 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-			:placeholder="__('Answer')"
-		/>`
-	})
 }
 
 const getAnswers = () => {

@@ -89,7 +89,7 @@ def validate_fill_in_answers(question):
 	# Validate that text_with_blanks contains all the blanks
 	text_with_blanks = question.text_with_blanks
 	for i in range(1, len(blank_numbers) + 1):
-		blank_marker = f"__{i}__"
+		blank_marker = f"\\__{i}__"
 		if blank_marker not in text_with_blanks:
 			frappe.throw(_(f"Text with blanks must contain blank marker {blank_marker}"))
 

@@ -102,7 +102,7 @@
 						class="space-y-4 py-2"
 					>
 						<div class="text-sm text-ink-gray-5 mb-2">
-							{{ __('Use __1__, __2__, etc. in your question text to mark blanks.') }}
+							{{ __('Use \\__1__, \\__2__, etc. in your question text to mark blanks.') }}
 						</div>
 						<div class="mb-4">
 							<label class="block text-xs text-ink-gray-5 mb-1">
