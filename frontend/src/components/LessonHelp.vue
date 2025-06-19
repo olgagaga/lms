@@ -16,6 +16,21 @@
 		</div>
 
 		<div class="space-y-2">
+			<div class="flex items-center text-sm font-medium space-x-2">
+				<span>
+					{{ __('What does hide from students mean?') }}
+				</span>
+			</div>
+			<div class="text-xs text-ink-gray-5 mb-1 leading-5">
+				{{
+					__(
+						'If Hide from Students is enabled for a lesson then the lesson will not be visible to students in the course. If you want to toggle chapter visibility for students, you can do this individually for each batch on the batch page.'
+					)
+				}}
+			</div>
+		</div>
+
+		<div class="space-y-2">
 			<div
 				class="flex items-center text-sm font-medium space-x-2 cursor-pointer"
 				@click="openHelpDialog('quiz')"
