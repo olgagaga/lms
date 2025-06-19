@@ -82,6 +82,7 @@ declare module 'vue' {
     Question: typeof import('./src/components/Modals/Question.vue')['default']
     Quiz: typeof import('./src/components/Quiz.vue')['default']
     QuizBlock: typeof import('./src/components/QuizBlock.vue')['default']
+    QuizNavigation: typeof import('./src/components/QuizNavigation.vue')['default']
     Rating: typeof import('./src/components/Controls/Rating.vue')['default']
     ReviewModal: typeof import('./src/components/Modals/ReviewModal.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']

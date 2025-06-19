@@ -245,6 +245,12 @@
 							</span>
 						</Button>
 					</div>
+
+					<QuizNavigation
+						:total-questions="questions.length"
+						:current-question="activeQuestion"
+						@navigate="navigateToQuestion"
+					/>
 				</div>
 			</div>
 		</div>
@@ -324,6 +330,7 @@ import { CheckCircle, XCircle, MinusCircle } from 'lucide-vue-next'
 import { timeAgo } from '@/utils'
 import { useRouter } from 'vue-router'
 import ProgressBar from '@/components/ProgressBar.vue'
+import QuizNavigation from '@/components/QuizNavigation.vue'
 
 const user = inject('$user')
 const activeQuestion = ref(0)
@@ -729,6 +736,31 @@ const getSubmissionColumns = () => {
 			align: 'center',
 		},
 	]
+}
+
+const navigateToQuestion = (index) => {
+	if (quiz.data.show_answers || questionDetails.data?.type == 'Open Ended') {
+		activeQuestion.value = index
+		selectedOptions.splice(0, selectedOptions.length, ...[0, 0, 0, 0])
+		showAnswers.length = 0
+		possibleAnswer.value = null
+		fillInAnswers.value = []
+	} else {
+		// Save current answer before navigating
+		if (questionDetails.data?.type == 'Open Ended') {
+			addToLocalStorage()
+		} else {
+			checkAnswer()
+		}
+		// Navigate after a short delay to ensure answer is saved
+		setTimeout(() => {
+			activeQuestion.value = index
+			selectedOptions.splice(0, selectedOptions.length, ...[0, 0, 0, 0])
+			showAnswers.length = 0
+			possibleAnswer.value = null
+			fillInAnswers.value = []
+		}, 500)
+	}
 }
 </script>
 <style>
