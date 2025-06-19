@@ -232,7 +232,7 @@
 							</span>
 						</Button>
 						<Button
-							v-else-if="activeQuestion != questions.length"
+							v-else-if="!allQuestionsAnswered"
 							@click="nextQuestion()"
 						>
 							<span>
@@ -679,12 +679,44 @@ const addToLocalStorage = () => {
 	localStorage.setItem(quiz.data.title, JSON.stringify(quizData))
 }
 
+// Add a computed property to check if all questions are answered
+const allQuestionsAnswered = computed(() => {
+	return questionStatuses.every(status => status.answered)
+})
+
+// Update nextQuestion function to find next unanswered question
 const nextQuestion = () => {
 	if (!quiz.data.show_answers && questionDetails.data?.type != 'Open Ended') {
 		checkAnswer()
 	} else {
-		if (questionDetails.data?.type == 'Open Ended') addToLocalStorage()
-		resetQuestion()
+		if (questionDetails.data?.type == 'Open Ended') {
+			addToLocalStorage()
+			questionStatuses[activeQuestion.value - 1] = {
+				answered: true,
+				isCorrect: null
+			}
+		}
+		
+		// Find the next unanswered question
+		let nextUnansweredIndex = questionStatuses.findIndex((status, index) => {
+			return index > activeQuestion.value - 1 && !status.answered
+		})
+		
+		// If no unanswered questions after current, look from beginning
+		if (nextUnansweredIndex === -1) {
+			nextUnansweredIndex = questionStatuses.findIndex(status => !status.answered)
+		}
+		
+		// If all questions are answered, stay on current question
+		if (nextUnansweredIndex === -1) {
+			return
+		}
+		
+		activeQuestion.value = nextUnansweredIndex + 1
+		selectedOptions.splice(0, selectedOptions.length, ...[0, 0, 0, 0])
+		showAnswers.length = 0
+		possibleAnswer.value = null
+		fillInAnswers.value = []
 	}
 }
 

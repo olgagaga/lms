@@ -8,7 +8,7 @@
         class="w-8 h-8 flex items-center justify-center rounded border"
         :class="{
           'bg-white text-ink-gray-9 border-gray-300': !getQuestionStatus(index) && index !== currentQuestion,
-          'bg-blue-300 text-white border-blue-500': index === currentQuestion,
+          'bg-blue-500 text-white border-blue-500': index === currentQuestion,
           'bg-green-300 text-black border-green-300': showAnswers && questionStatuses[index-1]?.isCorrect === true && index !== currentQuestion,
           'bg-red-300 text-black border-red-300': showAnswers && questionStatuses[index-1]?.isCorrect === false && index !== currentQuestion,
           'bg-gray-900 text-white border-gray-900': !showAnswers && questionStatuses[index-1]?.answered && index !== currentQuestion,
