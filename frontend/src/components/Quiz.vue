@@ -661,7 +661,10 @@ const getAnswers = () => {
 			questionDetails.data.text_with_blanks.match(/__(\d+)__/g)?.length || 0
 
 		if (answers.length < requiredBlanks) {
-			toast.warning(__('Please fill in all blanks'))
+			const showWarning = allQuestionsAnswered.value || quiz.data.show_answers
+			if (showWarning) {
+				toast.warning(__('Please fill in all blanks'))
+			}
 			return []
 		}
 		return answers
@@ -671,86 +674,95 @@ const getAnswers = () => {
 }
 
 // Update checkAnswer function to track question status
-const checkAnswer = () => {
-	let answers = getAnswers()
-	if (questionDetails.data.type === 'Choices' && !answers.length) {
-		toast.warning(__('Please select an option'))
+const checkAnswer = (questionContext = null) => {
+	const context = questionContext || {
+		questionName: currentQuestion.value,
+		questionDetails: questionDetails.data,
+		answers: getAnswers(),
+		selectedOptions: [...selectedOptions],
+		questionIndex: activeQuestion.value - 1,
+	}
+
+	let answers = context.answers
+	const showWarning = allQuestionsAnswered.value || quiz.data.show_answers
+
+	if (context.questionDetails.type === 'Choices' && !answers.length) {
+		if (showWarning) toast.warning(__('Please select an option'))
 		return
 	}
-	if (questionDetails.data.type === 'Fill In' && !answers.length) {
+	if (context.questionDetails.type === 'Fill In' && !answers.length) {
 		return
 	}
-	if (questionDetails.data.type === 'User Input' && !answers[0]) {
-		toast.warning(__('Please enter an answer'))
+	if (context.questionDetails.type === 'User Input' && !answers[0]) {
+		if (showWarning) toast.warning(__('Please enter an answer'))
 		return
 	}
 
 	createResource({
 		url: 'lms.lms.doctype.lms_quiz.lms_quiz.check_answer',
 		params: {
-			question: currentQuestion.value,
-			type: questionDetails.data.type,
+			question: context.questionName,
+			type: context.questionDetails.type,
 			answers: JSON.stringify(answers),
 		},
 		auto: true,
 		onSuccess(data) {
-			let type = questionDetails.data.type
+			let tempShowAnswers = []
+			let type = context.questionDetails.type
 			if (type == 'Choices') {
-				selectedOptions.forEach((option, index) => {
+				context.selectedOptions.forEach((option, index) => {
 					if (option) {
-						showAnswers[index] = option && data[index]
+						tempShowAnswers[index] = option && data[index]
 					} else if (data[index] == 2) {
-						showAnswers[index] = 2
+						tempShowAnswers[index] = 2
 					} else {
-						showAnswers[index] = undefined
+						tempShowAnswers[index] = undefined
 					}
 				})
 				// Update question status for multiple choice
 				const isCorrect = data.every(
-					(val, idx) => !selectedOptions[idx] || val === 1,
+					(val, idx) => !context.selectedOptions[idx] || val === 1,
 				)
-				questionStatuses[activeQuestion.value - 1] = {
+				questionStatuses[context.questionIndex] = {
 					answered: true,
 					isCorrect: quiz.data.show_answers ? isCorrect : null,
 				}
 			} else if (type == 'Fill In') {
-				showAnswers.splice(0, showAnswers.length, ...data)
+				tempShowAnswers = [...data]
 				// Update question status for fill in
 				const isCorrect = data.every((val) => val === true)
-				questionStatuses[activeQuestion.value - 1] = {
+				questionStatuses[context.questionIndex] = {
 					answered: true,
 					isCorrect: quiz.data.show_answers ? isCorrect : null,
 				}
 			} else if (type == 'User Input') {
-				showAnswers.splice(0, showAnswers.length, data)
+				tempShowAnswers = [data]
 				// Update question status for user input
 				const isCorrect = data === true
-				questionStatuses[activeQuestion.value - 1] = {
+				questionStatuses[context.questionIndex] = {
 					answered: true,
 					isCorrect: quiz.data.show_answers ? isCorrect : null,
 				}
-			} else {
-				showAnswers.push(data)
-				// Update question status for other types (Open Ended)
-				questionStatuses[activeQuestion.value - 1] = {
-					answered: true,
-					isCorrect: null, // Open ended questions don't have correct/incorrect status
-				}
 			}
-			addToLocalStorage()
-			if (!quiz.data.show_answers) {
-				resetQuestion()
+
+			addToLocalStorage(context.questionName, context.answers, tempShowAnswers)
+			if (quiz.data.show_answers) {
+				showAnswers.splice(0, showAnswers.length, ...tempShowAnswers)
 			}
 		},
 	})
 }
 
-const addToLocalStorage = () => {
+const addToLocalStorage = (
+	questionName,
+	answers,
+	correctness = [undefined],
+) => {
 	let quizData = JSON.parse(localStorage.getItem(quiz.data.title))
 	let questionData = {
-		question_name: currentQuestion.value,
-		answer: getAnswers().join(),
-		is_correct: showAnswers.filter((answer) => {
+		question_name: questionName,
+		answer: answers.join(),
+		is_correct: correctness.filter((answer) => {
 			return answer != undefined
 		}),
 	}
@@ -765,40 +777,50 @@ const allQuestionsAnswered = computed(() => {
 
 // Update nextQuestion function to find next unanswered question
 const nextQuestion = () => {
-	if (!quiz.data.show_answers && questionDetails.data?.type != 'Open Ended') {
-		checkAnswer()
-	} else {
-		if (questionDetails.data?.type == 'Open Ended') {
-			addToLocalStorage()
-			questionStatuses[activeQuestion.value - 1] = {
-				answered: true,
-				isCorrect: null,
-			}
+	const currentQuestionIndex = activeQuestion.value - 1
+	const currentQuestionType = questionDetails.data?.type
+
+	if (!quiz.data.show_answers && currentQuestionType != 'Open Ended') {
+		const context = {
+			questionName: currentQuestion.value,
+			questionDetails: questionDetails.data,
+			answers: getAnswers(),
+			selectedOptions: [...selectedOptions],
+			questionIndex: currentQuestionIndex,
 		}
-
-		// Find the next unanswered question
-		let nextUnansweredIndex = questionStatuses.findIndex((status, index) => {
-			return index > activeQuestion.value - 1 && !status.answered
-		})
-
-		// If no unanswered questions after current, look from beginning
-		if (nextUnansweredIndex === -1) {
-			nextUnansweredIndex = questionStatuses.findIndex(
-				(status) => !status.answered,
-			)
+		if (context.answers.length > 0) {
+			checkAnswer(context)
 		}
-
-		// If all questions are answered, stay on current question
-		if (nextUnansweredIndex === -1) {
-			return
+	} else if (currentQuestionType == 'Open Ended') {
+		const answers = getAnswers()
+		if (answers[0]) {
+			addToLocalStorage(currentQuestion.value, answers)
+			questionStatuses[currentQuestionIndex].answered = true
 		}
-
-		activeQuestion.value = nextUnansweredIndex + 1
-		selectedOptions.splice(0, selectedOptions.length, ...[0, 0, 0, 0])
-		showAnswers.length = 0
-		possibleAnswer.value = null
-		fillInAnswers.value = []
 	}
+
+	// Find the next unanswered question
+	let nextUnansweredIndex = questionStatuses.findIndex((status, index) => {
+		return index > currentQuestionIndex && !status.answered
+	})
+
+	// If no unanswered questions after current, look from beginning
+	if (nextUnansweredIndex === -1) {
+		nextUnansweredIndex = questionStatuses.findIndex(
+			(status) => !status.answered,
+		)
+	}
+
+	// If all questions are answered or no more unanswered questions, stay on current question
+	if (nextUnansweredIndex === -1) {
+		return
+	}
+
+	activeQuestion.value = nextUnansweredIndex + 1
+	selectedOptions.splice(0, selectedOptions.length, ...[0, 0, 0, 0])
+	showAnswers.length = 0
+	possibleAnswer.value = null
+	fillInAnswers.value = []
 }
 
 const resetQuestion = () => {
@@ -812,8 +834,16 @@ const resetQuestion = () => {
 
 const submitQuiz = () => {
 	if (!quiz.data.show_answers) {
-		if (questionDetails.data.type == 'Open Ended') addToLocalStorage()
-		else checkAnswer()
+		// Save the last question's answer before submitting
+		if (questionDetails.data.type == 'Open Ended') {
+			const answers = getAnswers()
+			if (answers[0]) {
+				addToLocalStorage(currentQuestion.value, answers)
+				questionStatuses[activeQuestion.value - 1].answered = true
+			}
+		} else {
+			checkAnswer()
+		}
 		setTimeout(() => {
 			createSubmission()
 		}, 500)
@@ -821,29 +851,6 @@ const submitQuiz = () => {
 	}
 	createSubmission()
 }
-
-// const createSubmission = () => {
-// 	quizSubmission.submit(
-// 		{},
-// 		{
-// 			onSuccess(data) {
-// 				markLessonProgress()
-// 				if (quiz.data && quiz.data.max_attempts) attempts.reload()
-// 				if (quiz.data.duration) clearInterval(timerInterval)
-// 			},
-// 			onError(err) {
-// 				const errorTitle = err?.message || ''
-// 				if (errorTitle.includes('MaximumAttemptsExceededError')) {
-// 					const errorMessage = err.messages?.[0] || err
-// 					toast.error(__(errorMessage))
-// 					setTimeout(() => {
-// 						window.location.reload()
-// 					}, 3000)
-// 				}
-// 			},
-// 		},
-// 	)
-// }
 
 const resetQuiz = () => {
 	activeQuestion.value = 0
