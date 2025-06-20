@@ -279,15 +279,62 @@
 				}}
 			</div>
 			<div v-else>
-				{{
-					__(
-						'You got {0}% correct answers with a score of {1} out of {2}',
-					).format(
-						Math.ceil(quizSubmission.data.percentage),
-						quizSubmission.data.score,
-						quizSubmission.data.score_out_of,
-					)
-				}}
+				<!-- Summary Table -->
+				<ListView
+					v-if="allQuestionDetailsLoaded"
+					class="mb-6"
+					:columns="[
+						{
+							label: __('Question'),
+							key: 'question',
+							width: 4,
+							getLabel: ({ row }) => row.question,
+							// If you want to render HTML content safely
+							// You might need a custom render function depending on your ListView implementation
+						},
+						{
+							label: __('Your Answer'),
+							key: 'yourAnswer',
+							width: 3,
+							getLabel: ({ row }) => row.yourAnswer,
+						},
+						{
+							label: __('Correct Answer'),
+							key: 'correctAnswer',
+							width: 3,
+							getLabel: ({ row }) => row.correctAnswer,
+						},
+						{
+							label: __('Marks Received'),
+							key: 'marksReceived',
+							width: 2,
+							getLabel: ({ row }) => row.marksReceived,
+						},
+					]"
+					:rows="summaryRows"
+					:options="{
+						selectable: false,
+						showTooltip: true,
+						resizeColumn: true,
+					}"
+					row-key="id"
+				/>
+				<div v-else class="text-center py-8">
+					{{ __('Loading summary...') }}
+				</div>
+
+				<!-- Completion Percentage -->
+				<div class="mt-2">
+					{{
+						__(
+							'You got {0}% correct answers with a score of {1} out of {2}',
+						).format(
+							Math.ceil(quizSubmission.data.percentage),
+							quizSubmission.data.score,
+							quizSubmission.data.score_out_of,
+						)
+					}}
+				</div>
 			</div>
 			<Button
 				@click="resetQuiz()"
@@ -361,6 +408,8 @@ const questionStatuses = reactive([])
 
 // Add a reactive array to track flagged questions
 const flaggedQuestions = reactive([])
+
+const allQuestionDetailsLoaded = ref(false)
 
 const props = defineProps({
 	quizName: {
@@ -773,28 +822,28 @@ const submitQuiz = () => {
 	createSubmission()
 }
 
-const createSubmission = () => {
-	quizSubmission.submit(
-		{},
-		{
-			onSuccess(data) {
-				markLessonProgress()
-				if (quiz.data && quiz.data.max_attempts) attempts.reload()
-				if (quiz.data.duration) clearInterval(timerInterval)
-			},
-			onError(err) {
-				const errorTitle = err?.message || ''
-				if (errorTitle.includes('MaximumAttemptsExceededError')) {
-					const errorMessage = err.messages?.[0] || err
-					toast.error(__(errorMessage))
-					setTimeout(() => {
-						window.location.reload()
-					}, 3000)
-				}
-			},
-		},
-	)
-}
+// const createSubmission = () => {
+// 	quizSubmission.submit(
+// 		{},
+// 		{
+// 			onSuccess(data) {
+// 				markLessonProgress()
+// 				if (quiz.data && quiz.data.max_attempts) attempts.reload()
+// 				if (quiz.data.duration) clearInterval(timerInterval)
+// 			},
+// 			onError(err) {
+// 				const errorTitle = err?.message || ''
+// 				if (errorTitle.includes('MaximumAttemptsExceededError')) {
+// 					const errorMessage = err.messages?.[0] || err
+// 					toast.error(__(errorMessage))
+// 					setTimeout(() => {
+// 						window.location.reload()
+// 					}, 3000)
+// 				}
+// 			},
+// 		},
+// 	)
+// }
 
 const resetQuiz = () => {
 	activeQuestion.value = 0
@@ -893,6 +942,187 @@ const navigateToQuestion = (index) => {
 			fillInAnswers.value = []
 		}, 500)
 	}
+}
+
+// Add this to your script setup section
+
+// Store for question details
+const questionDetailsStore = reactive({})
+
+// Function to load all question details
+const loadAllQuestionDetails = async () => {
+	allQuestionDetailsLoaded.value = false
+	for (const q of questions) {
+		try {
+			const details = await call('lms.lms.utils.get_question_details', {
+				question: q.question,
+			})
+			questionDetailsStore[q.question] = details
+		} catch (error) {
+			console.error(`Error loading details for question ${q.question}:`, error)
+		}
+	}
+	allQuestionDetailsLoaded.value = true
+}
+
+// Helper functions
+const formatUserAnswer = (answer, questionType, questionDetails) => {
+	if (!answer) return '-'
+
+	switch (questionType) {
+		case 'Choices':
+			// If answer contains option IDs, convert to option text
+			if (questionDetails && answer) {
+				const answerArray = answer.split(',')
+				const optionTexts = answerArray
+					.map((optionText) => {
+						// Find which option number this text corresponds to
+						for (let i = 1; i <= 4; i++) {
+							if (questionDetails[`option_${i}`] === optionText.trim()) {
+								return questionDetails[`option_${i}`]
+							}
+						}
+						return optionText.trim()
+					})
+					.filter(Boolean)
+				return optionTexts.join(', ')
+			}
+			return answer
+		case 'Fill In':
+			return answer.split(',').join(', ')
+		case 'User Input':
+			return answer
+		case 'Open Ended':
+			const text = stripHtml(answer)
+			return text.length > 100 ? text.substring(0, 100) + '...' : text
+		default:
+			return answer
+	}
+}
+
+const formatCorrectAnswer = (questionDetails) => {
+	if (!questionDetails) {
+		console.log('no question details retrieved')
+		return '-'
+	}
+
+	console.log(questionDetails)
+
+	switch (questionDetails.type) {
+		case 'Choices':
+			const correctOptions = []
+			for (let i = 1; i <= 4; i++) {
+				if (questionDetails[`is_correct_${i}`]) {
+					correctOptions.push(stripHtml(questionDetails[`option_${i}`]))
+				}
+			}
+			return correctOptions.length > 0 ? correctOptions.join(', ') : '-'
+
+		case 'Fill In':
+			if (questionDetails.correct_answers) {
+				return Array.isArray(questionDetails.correct_answers)
+					? questionDetails.correct_answers.join(', ')
+					: questionDetails.correct_answers
+			}
+			return '-'
+
+		case 'User Input':
+			const correctOptionsInput = []
+			for (let i = 1; i <= 4; i++) {
+				if (questionDetails[`possibility_${i}`]) {
+					correctOptionsInput.push(
+						stripHtml(questionDetails[`possibility_${i}`]),
+					)
+				}
+			}
+			return correctOptionsInput.length > 0
+				? correctOptionsInput.join('; ')
+				: '-'
+
+		case 'Open Ended':
+			return __('Subjective')
+
+		default:
+			return questionDetails.correct_answer || '-'
+	}
+}
+
+const calculateMarksReceived = (userEntry, question) => {
+	if (!userEntry.is_correct) return 0
+
+	if (Array.isArray(userEntry.is_correct)) {
+		// Count correct answers
+		const correctCount = userEntry.is_correct.filter(
+			(answer) => answer === 1 || answer === true,
+		).length
+		const totalAnswers = userEntry.is_correct.length
+
+		// For partial credit
+		if (correctCount === totalAnswers) {
+			return question.marks // Full marks
+		} else if (correctCount > 0) {
+			return Math.round((correctCount / totalAnswers) * question.marks) // Partial marks
+		}
+		return 0
+	} else {
+		// Single answer question
+		return userEntry.is_correct === 1 || userEntry.is_correct === true
+			? question.marks
+			: 0
+	}
+}
+
+// Updated summaryRows computed property
+const summaryRows = computed(() => {
+	if (!quiz.data || !quizSubmission.data) return []
+	// This line ensures reactivity
+	const detailsKeys = Object.keys(questionDetailsStore)
+	let quizData = JSON.parse(localStorage.getItem(quiz.data.title) || '[]')
+	return questions.map((q, idx) => {
+		const userEntry =
+			quizData.find((entry) => entry.question_name === q.question) || {}
+		const questionDetails = questionDetailsStore[q.question]
+		return {
+			id: idx + 1,
+			question: questionDetails
+				? stripHtml(questionDetails.question)
+				: `Question ${idx + 1}`,
+			yourAnswer: formatUserAnswer(
+				userEntry.answer,
+				questionDetails?.type,
+				questionDetails,
+			),
+			correctAnswer: formatCorrectAnswer(questionDetails),
+			marksReceived: `${calculateMarksReceived(userEntry, q)}/${q.marks}`,
+		}
+	})
+})
+
+// Update the createSubmission function to load question details
+const createSubmission = () => {
+	quizSubmission.submit(
+		{},
+		{
+			async onSuccess(data) {
+				// Load all question details for the summary
+				await loadAllQuestionDetails()
+
+				markLessonProgress()
+				if (quiz.data && quiz.data.max_attempts) attempts.reload()
+				if (quiz.data.duration) clearInterval(timerInterval)
+			},
+			onError(err) {
+				const errorTitle = err?.message || ''
+				if (errorTitle.includes('MaximumAttemptsExceededError')) {
+					const errorMessage = err.messages?.[0] || err
+					toast.error(__(errorMessage))
+					setTimeout(() => {
+						window.location.reload()
+					}, 3000)
+				}
+			},
+		},
+	)
 }
 </script>
 <style>
