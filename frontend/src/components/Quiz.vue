@@ -11,21 +11,21 @@
 			<div v-if="quiz.data?.duration" class="leading-5">
 				{{
 					__(
-						'Please ensure that you complete all the questions in {0} minutes.'
+						'Please ensure that you complete all the questions in {0} minutes.',
 					).format(quiz.data.duration)
 				}}
 			</div>
 			<div v-if="quiz.data?.duration" class="leading-5">
 				{{
 					__(
-						'If you fail to do so, the quiz will be automatically submitted when the timer ends.'
+						'If you fail to do so, the quiz will be automatically submitted when the timer ends.',
 					)
 				}}
 			</div>
 			<div v-if="quiz.data.passing_percentage" class="leading-relaxed">
 				{{
 					__(
-						'You will have to get {0}% correct answers in order to pass the quiz.'
+						'You will have to get {0}% correct answers in order to pass the quiz.',
 					).format(quiz.data.passing_percentage)
 				}}
 			</div>
@@ -34,7 +34,7 @@
 					__('You can attempt this quiz {0}.').format(
 						quiz.data.max_attempts == 1
 							? '1 time'
-							: `${quiz.data.max_attempts} times`
+							: `${quiz.data.max_attempts} times`,
 					)
 				}}
 			</div>
@@ -70,7 +70,7 @@
 				<div v-else class="leading-5 text-ink-gray-7">
 					{{
 						__(
-							'You have already exceeded the maximum number of attempts allowed for this quiz.'
+							'You have already exceeded the maximum number of attempts allowed for this quiz.',
 						)
 					}}
 				</div>
@@ -91,9 +91,16 @@
 								{{ getInstructions(questionDetails.data) }}
 							</span>
 						</div>
-						<div class="text-ink-gray-9 text-sm font-semibold item-left">
+						<div
+							class="text-ink-gray-9 text-sm font-semibold item-left flex items-center gap-2"
+						>
 							{{ question.marks }}
 							{{ question.marks == 1 ? __('Mark') : __('Marks') }}
+							<Checkbox
+								size="sm"
+								v-model="flaggedQuestions[activeQuestion - 1]"
+								:label="__('Flag')"
+							/>
 						</div>
 					</div>
 					<div
@@ -177,7 +184,10 @@
 					<div v-else-if="questionDetails.data.type == 'Fill In'">
 						<div class="space-y-4">
 							<div class="text-ink-gray-9 font-medium mb-4">
-								<span v-for="(part, index) in parsedFillInQuestion" :key="index">
+								<span
+									v-for="(part, index) in parsedFillInQuestion"
+									:key="index"
+								>
 									<span v-if="part.type === 'text'">{{ part.value }}</span>
 									<input
 										v-else
@@ -192,7 +202,7 @@
 													: showAnswers[part.index] === false
 														? 'border-red-500 bg-red-50 text-red-900'
 														: ''
-												: 'focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
+												: 'focus:ring-2 focus:ring-blue-500 focus:border-blue-500',
 										]"
 										:placeholder="__('Answer')"
 									/>
@@ -215,7 +225,7 @@
 							{{
 								__('Question {0} of {1}').format(
 									activeQuestion,
-									questions.length
+									questions.length,
 								)
 							}}
 						</div>
@@ -231,10 +241,7 @@
 								{{ __('Check') }}
 							</span>
 						</Button>
-						<Button
-							v-else-if="!allQuestionsAnswered"
-							@click="nextQuestion()"
-						>
+						<Button v-else-if="!allQuestionsAnswered" @click="nextQuestion()">
 							<span>
 								{{ __('Next') }}
 							</span>
@@ -251,6 +258,7 @@
 						:current-question="activeQuestion"
 						:question-statuses="questionStatuses"
 						:show-answers="quiz.data?.show_answers"
+						:flagged-questions="flaggedQuestions"
 						@navigate="navigateToQuestion"
 					/>
 				</div>
@@ -266,18 +274,18 @@
 			>
 				{{
 					__(
-						"Your submission has been successfully saved. The instructor will review and grade it shortly, and you'll be notified of your final result."
+						"Your submission has been successfully saved. The instructor will review and grade it shortly, and you'll be notified of your final result.",
 					)
 				}}
 			</div>
 			<div v-else>
 				{{
 					__(
-						'You got {0}% correct answers with a score of {1} out of {2}'
+						'You got {0}% correct answers with a score of {1} out of {2}',
 					).format(
 						Math.ceil(quizSubmission.data.percentage),
 						quizSubmission.data.score,
-						quizSubmission.data.score_out_of
+						quizSubmission.data.score_out_of,
 					)
 				}}
 			</div>
@@ -326,6 +334,7 @@ import {
 	TextEditor,
 	FormControl,
 	toast,
+	Checkbox,
 } from 'frappe-ui'
 import { ref, watch, reactive, inject, computed } from 'vue'
 import { CheckCircle, XCircle, MinusCircle } from 'lucide-vue-next'
@@ -349,6 +358,9 @@ const parsedFillInQuestion = ref([])
 
 // Add question statuses tracking
 const questionStatuses = reactive([])
+
+// Add a reactive array to track flagged questions
+const flaggedQuestions = reactive([])
 
 const props = defineProps({
 	quizName: {
@@ -379,11 +391,13 @@ const quiz = createResource({
 // Initialize question statuses when questions are populated
 const initializeQuestionStatuses = () => {
 	questionStatuses.splice(0, questionStatuses.length)
+	flaggedQuestions.splice(0, flaggedQuestions.length)
 	questions.forEach(() => {
 		questionStatuses.push({
 			answered: false,
-			isCorrect: null
+			isCorrect: null,
 		})
+		flaggedQuestions.push(false)
 	})
 }
 
@@ -478,7 +492,7 @@ watch(
 			attempts.reload()
 			resetQuiz()
 		}
-	}
+	},
 )
 
 const quizSubmission = createResource({
@@ -507,24 +521,30 @@ watch(activeQuestion, (value) => {
 	}
 })
 
-watch(questionDetails, (newValue) => {
-	if (newValue?.data?.type === 'Fill In') {
-		try {
-			if (!newValue.data.text_with_blanks) {
-				console.error('Text with blanks is not defined')
-				toast.error(__('Error: Text with blanks is missing'))
-				return
+watch(
+	questionDetails,
+	(newValue) => {
+		if (newValue?.data?.type === 'Fill In') {
+			try {
+				if (!newValue.data.text_with_blanks) {
+					console.error('Text with blanks is not defined')
+					toast.error(__('Error: Text with blanks is missing'))
+					return
+				}
+				const blankCount =
+					newValue.data.text_with_blanks.match(/\\__(\d+)__/g)?.length || 0
+				fillInAnswers.value = new Array(blankCount).fill('')
+				parsedFillInQuestion.value = parseFillInQuestion(
+					newValue.data.text_with_blanks,
+				)
+			} catch (error) {
+				console.error('Error parsing fill-in question:', error)
+				toast.error(__('Error loading question. Please try again.'))
 			}
-			const blankCount = newValue.data.text_with_blanks.match(/\\__(\d+)__/g)?.length || 0
-			fillInAnswers.value = new Array(blankCount).fill('')
-			parsedFillInQuestion.value = parseFillInQuestion(newValue.data.text_with_blanks)
-			
-		} catch (error) {
-			console.error('Error parsing fill-in question:', error)
-			toast.error(__('Error loading question. Please try again.'))
 		}
-	}
-}, { deep: true })
+	},
+	{ deep: true },
+)
 
 watch(
 	() => props.quizName,
@@ -532,7 +552,7 @@ watch(
 		if (newName) {
 			quiz.reload()
 		}
-	}
+	},
 )
 
 const startQuiz = () => {
@@ -562,7 +582,10 @@ const parseFillInQuestion = (question) => {
 
 	while ((match = regex.exec(cleanQuestion)) !== null) {
 		if (match.index > lastIndex) {
-			parts.push({ type: 'text', value: cleanQuestion.slice(lastIndex, match.index) })
+			parts.push({
+				type: 'text',
+				value: cleanQuestion.slice(lastIndex, match.index),
+			})
 		}
 		parts.push({ type: 'blank', index: parseInt(match[1]) - 1 })
 		lastIndex = regex.lastIndex
@@ -576,13 +599,18 @@ const parseFillInQuestion = (question) => {
 const getAnswers = () => {
 	if (questionDetails.data.type === 'Choices') {
 		return selectedOptions
-			.map((option, index) => (option ? questionDetails.data[`option_${index + 1}`] : null))
+			.map((option, index) =>
+				option ? questionDetails.data[`option_${index + 1}`] : null,
+			)
 			.filter(Boolean)
 	} else if (questionDetails.data.type === 'Fill In') {
 		// Get all answers, filtering out empty strings
-		const answers = fillInAnswers.value.filter(answer => answer && answer.trim() !== '')
-		const requiredBlanks = questionDetails.data.text_with_blanks.match(/__(\d+)__/g)?.length || 0
-		
+		const answers = fillInAnswers.value.filter(
+			(answer) => answer && answer.trim() !== '',
+		)
+		const requiredBlanks =
+			questionDetails.data.text_with_blanks.match(/__(\d+)__/g)?.length || 0
+
 		if (answers.length < requiredBlanks) {
 			toast.warning(__('Please fill in all blanks'))
 			return []
@@ -629,18 +657,20 @@ const checkAnswer = () => {
 					}
 				})
 				// Update question status for multiple choice
-				const isCorrect = data.every((val, idx) => !selectedOptions[idx] || val === 1)
+				const isCorrect = data.every(
+					(val, idx) => !selectedOptions[idx] || val === 1,
+				)
 				questionStatuses[activeQuestion.value - 1] = {
 					answered: true,
-					isCorrect: quiz.data.show_answers ? isCorrect : null
+					isCorrect: quiz.data.show_answers ? isCorrect : null,
 				}
 			} else if (type == 'Fill In') {
 				showAnswers.splice(0, showAnswers.length, ...data)
 				// Update question status for fill in
-				const isCorrect = data.every(val => val === true)
+				const isCorrect = data.every((val) => val === true)
 				questionStatuses[activeQuestion.value - 1] = {
 					answered: true,
-					isCorrect: quiz.data.show_answers ? isCorrect : null
+					isCorrect: quiz.data.show_answers ? isCorrect : null,
 				}
 			} else if (type == 'User Input') {
 				showAnswers.splice(0, showAnswers.length, data)
@@ -648,14 +678,14 @@ const checkAnswer = () => {
 				const isCorrect = data === true
 				questionStatuses[activeQuestion.value - 1] = {
 					answered: true,
-					isCorrect: quiz.data.show_answers ? isCorrect : null
+					isCorrect: quiz.data.show_answers ? isCorrect : null,
 				}
 			} else {
 				showAnswers.push(data)
 				// Update question status for other types (Open Ended)
 				questionStatuses[activeQuestion.value - 1] = {
 					answered: true,
-					isCorrect: null // Open ended questions don't have correct/incorrect status
+					isCorrect: null, // Open ended questions don't have correct/incorrect status
 				}
 			}
 			addToLocalStorage()
@@ -681,7 +711,7 @@ const addToLocalStorage = () => {
 
 // Add a computed property to check if all questions are answered
 const allQuestionsAnswered = computed(() => {
-	return questionStatuses.every(status => status.answered)
+	return questionStatuses.every((status) => status.answered)
 })
 
 // Update nextQuestion function to find next unanswered question
@@ -689,51 +719,31 @@ const nextQuestion = () => {
 	if (!quiz.data.show_answers && questionDetails.data?.type != 'Open Ended') {
 		checkAnswer()
 	} else {
-		// Save current answer before moving to next question
 		if (questionDetails.data?.type == 'Open Ended') {
 			addToLocalStorage()
 			questionStatuses[activeQuestion.value - 1] = {
 				answered: true,
-				isCorrect: null
+				isCorrect: null,
 			}
-		} else if (questionDetails.data?.type == 'User Input' && possibleAnswer.value) {
-			// For User Input questions, mark as answered if there's an answer
-			questionStatuses[activeQuestion.value - 1] = {
-				answered: true,
-				isCorrect: null
-			}
-			addToLocalStorage()
-		} else if (questionDetails.data?.type == 'Choices' && selectedOptions.some(option => option)) {
-			// For Choices questions, mark as answered if any option is selected
-			questionStatuses[activeQuestion.value - 1] = {
-				answered: true,
-				isCorrect: null
-			}
-			addToLocalStorage()
-		} else if (questionDetails.data?.type == 'Fill In' && fillInAnswers.value.some(answer => answer && answer.trim())) {
-			// For Fill In questions, mark as answered if any blank is filled
-			questionStatuses[activeQuestion.value - 1] = {
-				answered: true,
-				isCorrect: null
-			}
-			addToLocalStorage()
 		}
-		
+
 		// Find the next unanswered question
 		let nextUnansweredIndex = questionStatuses.findIndex((status, index) => {
 			return index > activeQuestion.value - 1 && !status.answered
 		})
-		
+
 		// If no unanswered questions after current, look from beginning
 		if (nextUnansweredIndex === -1) {
-			nextUnansweredIndex = questionStatuses.findIndex(status => !status.answered)
+			nextUnansweredIndex = questionStatuses.findIndex(
+				(status) => !status.answered,
+			)
 		}
-		
+
 		// If all questions are answered, stay on current question
 		if (nextUnansweredIndex === -1) {
 			return
 		}
-		
+
 		activeQuestion.value = nextUnansweredIndex + 1
 		selectedOptions.splice(0, selectedOptions.length, ...[0, 0, 0, 0])
 		showAnswers.length = 0
@@ -782,7 +792,7 @@ const createSubmission = () => {
 					}, 3000)
 				}
 			},
-		}
+		},
 	)
 }
 
@@ -847,12 +857,42 @@ const navigateToQuestion = (index) => {
 		return
 	}
 
-	// Simply navigate to the question without saving current answer
-	activeQuestion.value = index
-	selectedOptions.splice(0, selectedOptions.length, ...[0, 0, 0, 0])
-	showAnswers.length = 0
-	possibleAnswer.value = null
-	fillInAnswers.value = []
+	if (quiz.data.show_answers || questionDetails.data?.type == 'Open Ended') {
+		activeQuestion.value = index
+		selectedOptions.splice(0, selectedOptions.length, ...[0, 0, 0, 0])
+		showAnswers.length = 0
+		possibleAnswer.value = null
+		fillInAnswers.value = []
+	} else {
+		// Save current answer before navigating
+		if (questionDetails.data?.type == 'Open Ended') {
+			addToLocalStorage()
+			questionStatuses[activeQuestion.value - 1] = {
+				answered: true,
+				isCorrect: null,
+			}
+		} else if (
+			questionDetails.data?.type == 'User Input' &&
+			possibleAnswer.value
+		) {
+			// For User Input questions, mark as answered if there's an answer
+			questionStatuses[activeQuestion.value - 1] = {
+				answered: true,
+				isCorrect: null,
+			}
+			addToLocalStorage()
+		} else {
+			checkAnswer()
+		}
+		// Navigate after a short delay to ensure answer is saved
+		setTimeout(() => {
+			activeQuestion.value = index
+			selectedOptions.splice(0, selectedOptions.length, ...[0, 0, 0, 0])
+			showAnswers.length = 0
+			possibleAnswer.value = null
+			fillInAnswers.value = []
+		}, 500)
+	}
 }
 </script>
 <style>

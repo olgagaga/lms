@@ -5,7 +5,7 @@
         v-for="index in totalQuestions"
         :key="index"
         @click="$emit('navigate', index)"
-        class="w-8 h-8 flex items-center justify-center rounded border"
+        class="w-8 h-8 flex items-center justify-center rounded border relative"
         :class="{
           'bg-white text-ink-gray-9 border-gray-300': !getQuestionStatus(index) && index !== currentQuestion,
           'bg-blue-500 text-white border-blue-500': index === currentQuestion,
@@ -18,6 +18,9 @@
         :disabled="showAnswers && questionStatuses[index-1]?.answered && index !== currentQuestion"
       >
         {{ index }}
+        <span v-if="flaggedQuestions[index-1]" class="absolute top-0 right-0 m-1">
+          <span class="block w-1 h-1 rounded-full bg-yellow-400"></span>
+        </span>
       </button>
     </div>
   </div>
@@ -39,6 +42,10 @@ const props = defineProps({
   },
   showAnswers: {
     type: Boolean,
+    required: true
+  },
+  flaggedQuestions: {
+    type: Array,
     required: true
   }
 })
