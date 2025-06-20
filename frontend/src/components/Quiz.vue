@@ -1021,7 +1021,7 @@ const formatCorrectAnswer = (questionDetails) => {
 		case 'Fill In':
 			if (questionDetails.correct_answers) {
 				return Array.isArray(questionDetails.correct_answers)
-					? questionDetails.correct_answers.join(', ')
+					? questionDetails.correct_answers.join('; ')
 					: questionDetails.correct_answers
 			}
 			return '-'

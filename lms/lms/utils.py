@@ -1554,6 +1554,16 @@ def get_question_details(question):
 		fields.append(f"possibility_{i}")
 
 	question_details = frappe.db.get_value("LMS Question", question, fields, as_dict=1)
+	if question_details.type == "Fill In":
+			correct_answers = frappe.get_all(
+				"Fill In Answer",
+				filters={"parent": question},
+				fields=["correct_answer"],
+				order_by="idx",
+			)
+			question_details["correct_answers"] = [
+				ans.correct_answer for ans in correct_answers
+			]
 	return question_details
 
 
