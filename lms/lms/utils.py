@@ -847,7 +847,7 @@ def get_chart_data(
 @frappe.whitelist(allow_guest=True)
 def get_course_completion_data():
 	all_membership = frappe.db.count("LMS Enrollment")
-	completed = frappe.db.count("LMS Enrollment", {"progress": ["like", "%100%"]})
+	completed = frappe.db.count("LMS Enrollment", {"progress": 100})
 
 	return [
 		{"label": "Completed", "value": completed},

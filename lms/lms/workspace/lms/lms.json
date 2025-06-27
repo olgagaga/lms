@@ -173,7 +173,7 @@
    "format": "{} Completed",
    "label": "Course Completed",
    "link_to": "LMS Enrollment",
-   "stats_filter": "{\"progress\":[\"like\",\"%100%\"]}",
+   "stats_filter": "{\"progress\":[\"=\",100]}",
    "type": "DocType"
   },
   {

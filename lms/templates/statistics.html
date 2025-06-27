@@ -23,7 +23,7 @@
 		</div>
 	</div>
 	{% endif %} {% if course_completion %} {% set course_completion_count =
-	frappe.db.count("LMS Enrollment", { "progress":["like","%100%"] }) %}
+	frappe.db.count("LMS Enrollment", { "progress": 100 }) %}
 	<div class="common-card-style p-4 flex-column">
 		<div class="stats-label">{{ _("Courses Completed") }}</div>
 		<div class="stats-value">
