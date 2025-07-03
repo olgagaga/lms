@@ -259,95 +259,109 @@
 						:question-statuses="questionStatuses"
 						:show-answers="quiz.data?.show_answers"
 						:flagged-questions="flaggedQuestions"
+						:review-mode="quizSubmission.data && !quizSubmission.data.is_open_ended"
 						@navigate="navigateToQuestion"
 					/>
 				</div>
 			</div>
 		</div>
-		<div v-else class="border rounded-md p-20 text-center space-y-2">
-			<div class="text-lg font-semibold text-ink-gray-9">
-				{{ __('Quiz Summary') }}
-			</div>
-			<div
-				v-if="quizSubmission.data.is_open_ended"
-				class="leading-5 text-ink-gray-7"
-			>
-				{{
-					__(
-						"Your submission has been successfully saved. The instructor will review and grade it shortly, and you'll be notified of your final result.",
-					)
-				}}
+		<div v-else>
+			<div v-if="quizSubmission.data.is_open_ended" class="border rounded-md p-20 text-center space-y-2">
+				<div class="text-lg font-semibold text-ink-gray-9">
+					{{ __('Quiz Summary') }}
+				</div>
+				<div class="leading-5 text-ink-gray-7">
+					{{ __('Your submission has been successfully saved. The instructor will review and grade it shortly, and you\'ll be notified of your final result.') }}
+				</div>
 			</div>
 			<div v-else>
-				<!-- Summary Table -->
-				<ListView
-					v-if="allQuestionDetailsLoaded"
-					class="mb-6"
-					:columns="[
-						{
-							label: __('Question'),
-							key: 'question',
-							width: 4,
-							getLabel: ({ row }) => row.question,
-							// If you want to render HTML content safely
-							// You might need a custom render function depending on your ListView implementation
-						},
-						{
-							label: __('Your Answer'),
-							key: 'yourAnswer',
-							width: 3,
-							getLabel: ({ row }) => row.yourAnswer,
-						},
-						{
-							label: __('Correct Answer'),
-							key: 'correctAnswer',
-							width: 3,
-							getLabel: ({ row }) => row.correctAnswer,
-						},
-						{
-							label: __('Marks Received'),
-							key: 'marksReceived',
-							width: 2,
-							getLabel: ({ row }) => row.marksReceived,
-						},
-					]"
-					:rows="summaryRows"
-					:options="{
-						selectable: false,
-						showTooltip: true,
-						resizeColumn: true,
-					}"
-					row-key="id"
-				/>
-				<div v-else class="text-center py-8">
-					{{ __('Loading summary...') }}
+				<div v-for="(question, qtidx) in questions">
+					<div v-if="qtidx == activeQuestion - 1 && questionDetailsStore[question.question]" class="border rounded-md p-5">
+						<div class="flex justify-between">
+							<div class="text-sm text-ink-gray-5">
+								<span class="mr-2">
+									{{ __('Question {0}').format(activeQuestion) }}:
+								</span>
+								<span>
+									{{ getInstructions(questionDetailsStore[question.question]) }}
+								</span>
+							</div>
+							<div class="text-ink-gray-9 text-sm font-semibold item-left flex items-center gap-2">
+								{{ question.marks }}
+								{{ question.marks == 1 ? __('Mark') : __('Marks') }}
+							</div>
+						</div>
+						<div class="text-ink-gray-9 font-semibold mt-2 leading-5" v-html="questionDetailsStore[question.question].question"></div>
+						<div v-if="questionDetailsStore[question.question].type == 'Choices'" v-for="index in 4">
+							<label v-if="questionDetailsStore[question.question][`option_${index}`]"
+								class="flex items-center bg-surface-gray-3 rounded-md p-3 mt-4 w-full">
+								<input
+									type="checkbox"
+									:checked="userAnsweredOption(question, index)"
+									disabled
+									class="w-3.5 h-3.5 text-ink-gray-9 rounded-sm mr-2"
+								/>
+								<span class="ml-2" v-html="questionDetailsStore[question.question][`option_${index}`]"></span>
+								<span v-if="userAnsweredOption(question, index)" class="ml-2">
+									<CheckCircle v-if="isOptionCorrect(question, index)" class="w-4 h-4 text-ink-green-2" />
+									<XCircle v-else class="w-4 h-4 text-ink-red-3" />
+								</span>
+							</label>
+						</div>
+						<div v-else-if="questionDetailsStore[question.question].type == 'User Input'">
+							<FormControl
+								:model-value="getUserAnswer(question)"
+								type="textarea"
+								disabled
+								class="my-2"
+							/>
+							<Badge v-if="isUserInputCorrect(question)" :label="__('Correct')" theme="green">
+								<template #prefix>
+									<CheckCircle class="w-4 h-4 text-ink-green-2 mr-1" />
+								</template>
+							</Badge>
+							<Badge v-else theme="red" :label="__('Incorrect')">
+								<template #prefix>
+									<XCircle class="w-4 h-4 text-ink-red-3 mr-1" />
+								</template>
+							</Badge>
+						</div>
+						<div v-else-if="questionDetailsStore[question.question].type == 'Fill In'">
+							<div class="space-y-4">
+								<div class="text-ink-gray-9 font-medium mb-4">
+									<span v-for="(part, index) in parseFillInQuestion(questionDetailsStore[question.question].text_with_blanks)" :key="index">
+										<span v-if="part.type === 'text'">{{ part.value }}</span>
+										<input v-else type="text" :value="getFillInUserAnswer(question, part.index)" disabled
+											:class="['inline-block w-32 px-2 py-1 mx-1 border rounded-md', isFillInCorrect(question, part.index) ? 'border-green-500 bg-green-50 text-green-900' : 'border-red-500 bg-red-50 text-red-900']"
+										placeholder="Answer" />
+									</span>
+								</div>
+							</div>
+						</div>
+						<div class="mt-2 text-xs text-ink-gray-7">
+							<strong>{{ __('Correct Answer:') }}</strong>
+							<span>{{ formatCorrectAnswer(questionDetailsStore[question.question]) }}</span>
+						</div>
+					</div>
 				</div>
-
-				<!-- Completion Percentage -->
-				<div class="mt-2">
-					{{
-						__(
-							'You got {0}% correct answers with a score of {1} out of {2}',
-						).format(
-							Math.ceil(quizSubmission.data.percentage),
-							quizSubmission.data.score,
-							quizSubmission.data.score_out_of,
-						)
-					}}
+				<QuizNavigation
+					:total-questions="questions.length"
+					:current-question="activeQuestion"
+					:question-statuses="reviewStatuses"
+					:show-answers="true"
+					:flagged-questions="flaggedQuestions"
+					:review-mode="quizSubmission.data && !quizSubmission.data.is_open_ended"
+					@navigate="navigateToQuestion"
+					class="flex justify-center"
+				/>
+				<div class="mt-5 flex flex-col items-center justify-center">
+					{{ __('You got {0}% correct answers with a score of {1} out of {2}').format(Math.ceil(quizSubmission.data.percentage), quizSubmission.data.score, quizSubmission.data.score_out_of) }}
+					<Button @click="resetQuiz()" class="mt-5"
+						v-if="!quiz.data.max_attempts || attempts?.data.length < quiz.data.max_attempts">
+						<span>{{ __('Try Again') }}</span>
+					</Button>
 				</div>
 			</div>
-			<Button
-				@click="resetQuiz()"
-				class="mt-2"
-				v-if="
-					!quiz.data.max_attempts ||
-					attempts?.data.length < quiz.data.max_attempts
-				"
-			>
-				<span>
-					{{ __('Try Again') }}
-				</span>
-			</Button>
 		</div>
 		<div
 			v-if="
@@ -908,6 +922,16 @@ const getSubmissionColumns = () => {
 
 // Update navigateToQuestion function
 const navigateToQuestion = (index) => {
+	// Always allow navigation in review mode (after submission, not open-ended)
+	if (quizSubmission.data && !quizSubmission.data.is_open_ended) {
+		activeQuestion.value = index
+		selectedOptions.splice(0, selectedOptions.length, ...[0, 0, 0, 0])
+		showAnswers.length = 0
+		possibleAnswer.value = null
+		fillInAnswers.value = []
+		return
+	}
+
 	if (quiz.data.show_answers && questionStatuses[index - 1]?.answered) {
 		// Don't allow navigation to answered questions when show_answers is enabled
 		return
@@ -1131,6 +1155,74 @@ const createSubmission = () => {
 		},
 	)
 }
+
+// --- Add review mode helpers ---
+// Get user's answer for a question (from localStorage/quizSubmission)
+const getUserEntry = (question) => {
+	let quizData = JSON.parse(localStorage.getItem(quiz.data.title) || '[]')
+	return quizData.find((entry) => entry.question_name === question.question) || {}
+}
+const getUserAnswer = (question) => getUserEntry(question).answer || ''
+const userAnsweredOption = (question, index) => {
+	const entry = getUserEntry(question)
+	if (!entry.answer) return false
+	return entry.answer.split(',').map(a => a.trim()).includes(questionDetailsStore[question.question][`option_${index}`])
+}
+const isOptionCorrect = (question, index) => {
+	const entry = getUserEntry(question)
+	if (!entry.answer) return false
+	const correctOptions = []
+	for (let i = 1; i <= 4; i++) {
+		if (questionDetailsStore[question.question][`is_correct_${i}`]) {
+			correctOptions.push(questionDetailsStore[question.question][`option_${i}`])
+		}
+	}
+	return correctOptions.includes(questionDetailsStore[question.question][`option_${index}`])
+}
+const isUserInputCorrect = (question) => {
+	const entry = getUserEntry(question)
+	if (!entry.answer) return false
+	const correctPossibilities = []
+	for (let i = 1; i <= 4; i++) {
+		if (questionDetailsStore[question.question][`possibility_${i}`]) {
+			correctPossibilities.push(questionDetailsStore[question.question][`possibility_${i}`])
+		}
+	}
+	return correctPossibilities.includes(entry.answer)
+}
+const getFillInUserAnswer = (question, idx) => {
+	const entry = getUserEntry(question)
+	if (!entry.answer) return ''
+	const answers = entry.answer.split(',')
+	return answers[idx] || ''
+}
+const isFillInCorrect = (question, idx) => {
+	const entry = getUserEntry(question)
+	if (!entry.is_correct) return false
+	return Array.isArray(entry.is_correct) ? (entry.is_correct[idx] === 1 || entry.is_correct[idx] === true) : (entry.is_correct === 1 || entry.is_correct === true)
+}
+// For navigation, always show green/red for correct/incorrect
+const reviewStatuses = computed(() => {
+	return questions.map((q) => {
+		const entry = getUserEntry(q)
+		if (!entry.is_correct) return { answered: !!entry.answer, isCorrect: false }
+		if (Array.isArray(entry.is_correct)) {
+			const allCorrect = entry.is_correct.every((v) => v === 1 || v === true)
+			return { answered: !!entry.answer, isCorrect: allCorrect }
+		} else {
+			return { answered: !!entry.answer, isCorrect: entry.is_correct === 1 || entry.is_correct === true }
+		}
+	})
+})
+
+watch(
+	() => quizSubmission.data,
+	(newVal) => {
+		if (newVal && !newVal.is_open_ended) {
+			loadAllQuestionDetails()
+		}
+	}
+)
 </script>
 <style>
 p {

@@ -12,10 +12,10 @@
           'bg-green-300 text-black border-green-300': showAnswers && questionStatuses[index-1]?.isCorrect === true && index !== currentQuestion,
           'bg-red-300 text-black border-red-300': showAnswers && questionStatuses[index-1]?.isCorrect === false && index !== currentQuestion,
           'bg-gray-900 text-white border-gray-900': !showAnswers && questionStatuses[index-1]?.answered && index !== currentQuestion,
-          'cursor-not-allowed': showAnswers && questionStatuses[index-1]?.answered && index !== currentQuestion,
-          'cursor-pointer': !showAnswers || !questionStatuses[index-1]?.answered || index === currentQuestion
+          'cursor-not-allowed': !reviewMode && showAnswers && questionStatuses[index-1]?.answered && index !== currentQuestion,
+          'cursor-pointer': reviewMode || !showAnswers || !questionStatuses[index-1]?.answered || index === currentQuestion
         }"
-        :disabled="showAnswers && questionStatuses[index-1]?.answered && index !== currentQuestion"
+        :disabled="!reviewMode && showAnswers && questionStatuses[index-1]?.answered && index !== currentQuestion"
       >
         {{ index }}
         <span v-if="flaggedQuestions[index-1]" class="absolute top-0 right-0 m-1">
@@ -47,6 +47,10 @@ const props = defineProps({
   flaggedQuestions: {
     type: Array,
     required: true
+  },
+  reviewMode: {
+    type: Boolean,
+    default: false
   }
 })
 
