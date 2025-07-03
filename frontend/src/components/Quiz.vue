@@ -667,18 +667,11 @@ const getAnswers = () => {
 			)
 			.filter(Boolean)
 	} else if (questionDetails.data.type === 'Fill In') {
-		// Get all answers, filtering out empty strings
-		const answers = fillInAnswers.value.filter(
-			(answer) => answer && answer.trim() !== '',
-		)
 		const requiredBlanks =
 			questionDetails.data.text_with_blanks.match(/__(\d+)__/g)?.length || 0
-
-		if (answers.length < requiredBlanks) {
-			const showWarning = allQuestionsAnswered.value || quiz.data.show_answers
-			if (showWarning) {
-				toast.warning(__('Please fill in all blanks'))
-			}
+		const answers = fillInAnswers.value.slice(0, requiredBlanks)
+		const allFilled = answers.every((answer) => answer && answer.trim() !== '')
+		if (!allFilled) {
 			return []
 		}
 		return answers
@@ -687,7 +680,6 @@ const getAnswers = () => {
 	}
 }
 
-// Update checkAnswer function to track question status
 const checkAnswer = (questionContext = null, isSubmit = false) => {
 	const context = questionContext || {
 		questionName: currentQuestion.value,
@@ -704,8 +696,13 @@ const checkAnswer = (questionContext = null, isSubmit = false) => {
 		if (!isSubmit && showWarning) toast.warning(__('Please select an option'))
 		return
 	}
-	if (context.questionDetails.type === 'Fill In' && !answers.length) {
-		return
+	if (context.questionDetails.type === 'Fill In') {
+		const requiredBlanks = context.questionDetails.text_with_blanks.match(/__(\d+)__/g)?.length || 0
+		const allFilled = answers.length === requiredBlanks && answers.every((a) => a && a.trim() !== '')
+		if (!allFilled) {
+			if (!isSubmit && showWarning) toast.warning(__('Please fill in all blanks'))
+			return
+		}
 	}
 	if (context.questionDetails.type === 'User Input' && !answers[0]) {
 		if (!isSubmit && showWarning) toast.warning(__('Please enter an answer'))
@@ -733,7 +730,6 @@ const checkAnswer = (questionContext = null, isSubmit = false) => {
 						tempShowAnswers[index] = undefined
 					}
 				})
-				// Update question status for multiple choice
 				const isCorrect = data.every(
 					(val, idx) => !context.selectedOptions[idx] || val === 1,
 				)
@@ -743,7 +739,6 @@ const checkAnswer = (questionContext = null, isSubmit = false) => {
 				}
 			} else if (type == 'Fill In') {
 				tempShowAnswers = [...data]
-				// Update question status for fill in
 				const isCorrect = data.every((val) => val === true)
 				questionStatuses[context.questionIndex] = {
 					answered: true,
@@ -751,7 +746,6 @@ const checkAnswer = (questionContext = null, isSubmit = false) => {
 				}
 			} else if (type == 'User Input') {
 				tempShowAnswers = [data]
-				// Update question status for user input
 				const isCorrect = data === true
 				questionStatuses[context.questionIndex] = {
 					answered: true,
@@ -831,32 +825,31 @@ const nextQuestion = () => {
 	}
 
 	activeQuestion.value = nextUnansweredIndex + 1
-	selectedOptions.splice(0, selectedOptions.length, ...[0, 0, 0, 0])
-	showAnswers.length = 0
-	possibleAnswer.value = null
-	fillInAnswers.value = []
 }
 
 const resetQuestion = () => {
 	if (activeQuestion.value == quiz.data.questions.length) return
 	activeQuestion.value = activeQuestion.value + 1
-	selectedOptions.splice(0, selectedOptions.length, ...[0, 0, 0, 0])
-	showAnswers.length = 0
-	possibleAnswer.value = null
-	fillInAnswers.value = []
 }
 
 const submitQuiz = () => {
 	if (!quiz.data.show_answers) {
-		// Save the last question's answer before submitting
-		if (questionDetails.data.type == 'Open Ended') {
-			const answers = getAnswers()
-			if (answers[0]) {
-				addToLocalStorage(currentQuestion.value, answers)
-				questionStatuses[activeQuestion.value - 1].answered = true
-			}
-		} else {
-			checkAnswer(null, true)
+		// Always save the last question's answer before submitting, for all types
+		const context = {
+			questionName: currentQuestion.value,
+			questionDetails: questionDetails.data,
+			answers: getAnswers(),
+			selectedOptions: [...selectedOptions],
+			questionIndex: activeQuestion.value - 1,
+		}
+		const type = context.questionDetails.type
+		if (
+			(type === 'Fill In' && context.answers.length === (context.questionDetails.text_with_blanks.match(/__(\d+)__/g)?.length || 0) && context.answers.every((a) => a && a.trim() !== '')) ||
+			(type === 'Choices' && context.answers.length > 0) ||
+			(type === 'User Input' && context.answers[0]) ||
+			(type === 'Open Ended' && context.answers[0])
+		) {
+			checkAnswer(context, true)
 		}
 		setTimeout(() => {
 			createSubmission()
@@ -925,10 +918,6 @@ const navigateToQuestion = (index) => {
 	// Always allow navigation in review mode (after submission, not open-ended)
 	if (quizSubmission.data && !quizSubmission.data.is_open_ended) {
 		activeQuestion.value = index
-		selectedOptions.splice(0, selectedOptions.length, ...[0, 0, 0, 0])
-		showAnswers.length = 0
-		possibleAnswer.value = null
-		fillInAnswers.value = []
 		return
 	}
 
@@ -939,10 +928,6 @@ const navigateToQuestion = (index) => {
 
 	if (quiz.data.show_answers || questionDetails.data?.type == 'Open Ended') {
 		activeQuestion.value = index
-		selectedOptions.splice(0, selectedOptions.length, ...[0, 0, 0, 0])
-		showAnswers.length = 0
-		possibleAnswer.value = null
-		fillInAnswers.value = []
 	} else {
 		// Save current answer before navigating
 		if (questionDetails.data?.type == 'Open Ended') {
@@ -967,10 +952,6 @@ const navigateToQuestion = (index) => {
 		// Navigate after a short delay to ensure answer is saved
 		setTimeout(() => {
 			activeQuestion.value = index
-			selectedOptions.splice(0, selectedOptions.length, ...[0, 0, 0, 0])
-			showAnswers.length = 0
-			possibleAnswer.value = null
-			fillInAnswers.value = []
 		}, 500)
 	}
 }
