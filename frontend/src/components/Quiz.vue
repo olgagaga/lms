@@ -110,7 +110,10 @@
 					<div v-if="questionDetails.data.type == 'Choices'" v-for="index in 4">
 						<label
 							v-if="questionDetails.data[`option_${index}`]"
-							class="flex items-center bg-surface-gray-3 rounded-md p-3 mt-4 w-full cursor-pointer focus:border-blue-600"
+							:class="[
+								'flex items-center rounded-md p-3 mt-4 w-full cursor-pointer focus:border-blue-600',
+								selectedOptions[index - 1] ? 'bg-surface-gray-4' : 'bg-surface-gray-3'
+							]"
 						>
 							<input
 								v-if="!showAnswers.length && !questionDetails.data.multiple"
@@ -360,12 +363,18 @@
 					class="flex justify-center"
 				/>
 				<div class="mt-5 flex flex-col items-center justify-center">
-					{{ __('You got {0}% correct answers with a score of {1} out of {2}').format(Math.ceil(quizSubmission.data.percentage), quizSubmission.data.score, quizSubmission.data.score_out_of) }}
-					<Button @click="resetQuiz()" class="mt-5"
-						v-if="!quiz.data.max_attempts || attempts?.data.length < quiz.data.max_attempts">
-						<span>{{ __('Try Again') }}</span>
-					</Button>
-				</div>
+    {{ __('You got {0}% correct answers with a score of {1} out of {2}').format(Math.ceil(quizSubmission.data.percentage), quizSubmission.data.score, quizSubmission.data.score_out_of) }}
+    <div v-if="quizSubmission.data.percentage >= quiz.data.passing_percentage" class="text-green-700 font-semibold mt-2">
+        {{ __("Congratulations! You passed the quiz and now can move on! Don't forget to analyze your mistakes") }}
+    </div>
+    <div v-else class="text-red-700 font-semibold mt-2">
+        {{ __("Quiz Failed! You need to try one more time to get quiz passed! Good luck") }}
+    </div>
+    <Button @click="resetQuiz()" class="mt-5"
+        v-if="!quiz.data.max_attempts || attempts?.data.length < quiz.data.max_attempts">
+        <span>{{ __('Try Again') }}</span>
+    </Button>
+</div>
 			</div>
 		</div>
 		<div
