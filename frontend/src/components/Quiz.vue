@@ -674,7 +674,7 @@ const getAnswers = () => {
 }
 
 // Update checkAnswer function to track question status
-const checkAnswer = (questionContext = null) => {
+const checkAnswer = (questionContext = null, isSubmit = false) => {
 	const context = questionContext || {
 		questionName: currentQuestion.value,
 		questionDetails: questionDetails.data,
@@ -687,14 +687,14 @@ const checkAnswer = (questionContext = null) => {
 	const showWarning = allQuestionsAnswered.value || quiz.data.show_answers
 
 	if (context.questionDetails.type === 'Choices' && !answers.length) {
-		if (showWarning) toast.warning(__('Please select an option'))
+		if (!isSubmit && showWarning) toast.warning(__('Please select an option'))
 		return
 	}
 	if (context.questionDetails.type === 'Fill In' && !answers.length) {
 		return
 	}
 	if (context.questionDetails.type === 'User Input' && !answers[0]) {
-		if (showWarning) toast.warning(__('Please enter an answer'))
+		if (!isSubmit && showWarning) toast.warning(__('Please enter an answer'))
 		return
 	}
 
@@ -842,7 +842,7 @@ const submitQuiz = () => {
 				questionStatuses[activeQuestion.value - 1].answered = true
 			}
 		} else {
-			checkAnswer()
+			checkAnswer(null, true)
 		}
 		setTimeout(() => {
 			createSubmission()
