@@ -771,7 +771,12 @@ const addToLocalStorage = (
 	answers,
 	correctness = [undefined],
 ) => {
-	let quizData = JSON.parse(localStorage.getItem(quiz.data.title))
+	let quizData = JSON.parse(localStorage.getItem(quiz.data.title)) || []
+	quizData = quizData.filter(entry => entry.question_name !== questionName)
+	// If correctness is empty, set to [false] for User Input
+	if ((!correctness || correctness.length === 0 || correctness.every(x => x === undefined)) && questionDetails.data?.type === 'User Input') {
+		correctness = [false]
+	}
 	let questionData = {
 		question_name: questionName,
 		answer: answers.join(),
@@ -779,7 +784,7 @@ const addToLocalStorage = (
 			return answer != undefined
 		}),
 	}
-	quizData ? quizData.push(questionData) : (quizData = [questionData])
+	quizData.push(questionData)
 	localStorage.setItem(quiz.data.title, JSON.stringify(quizData))
 }
 
