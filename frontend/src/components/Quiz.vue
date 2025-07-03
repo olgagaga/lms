@@ -117,6 +117,8 @@
 								type="radio"
 								:name="encodeURIComponent(questionDetails.data.question)"
 								class="w-3.5 h-3.5 text-ink-gray-9 focus:ring-outline-gray-modals"
+								v-model="selectedOptions[index - 1]"
+								:value="1"
 								@change="markAnswer(index)"
 							/>
 
@@ -125,6 +127,9 @@
 								type="checkbox"
 								:name="encodeURIComponent(questionDetails.data.question)"
 								class="w-3.5 h-3.5 text-ink-gray-9 rounded-sm focus:ring-outline-gray-modals"
+								v-model="selectedOptions[index - 1]"
+								:true-value="1"
+								:false-value="0"
 								@change="markAnswer(index)"
 							/>
 							<div
@@ -931,7 +936,8 @@ const navigateToQuestion = (index) => {
 	} else {
 		// Save current answer before navigating
 		if (questionDetails.data?.type == 'Open Ended') {
-			addToLocalStorage()
+			const answers = getAnswers()
+			addToLocalStorage(currentQuestion.value, answers)
 			questionStatuses[activeQuestion.value - 1] = {
 				answered: true,
 				isCorrect: null,
@@ -940,12 +946,12 @@ const navigateToQuestion = (index) => {
 			questionDetails.data?.type == 'User Input' &&
 			possibleAnswer.value
 		) {
-			// For User Input questions, mark as answered if there's an answer
+			const answers = getAnswers()
 			questionStatuses[activeQuestion.value - 1] = {
 				answered: true,
 				isCorrect: null,
 			}
-			addToLocalStorage()
+			addToLocalStorage(currentQuestion.value, answers)
 		} else {
 			checkAnswer()
 		}
@@ -1201,6 +1207,44 @@ watch(
 	(newVal) => {
 		if (newVal && !newVal.is_open_ended) {
 			loadAllQuestionDetails()
+		}
+	}
+)
+
+// Restore user's previous answer for the current question
+const restoreUserAnswer = () => {
+	const entry = getUserEntry({ question: currentQuestion.value })
+	const qType = questionDetails.data?.type
+
+	if (!entry || !qType) return
+
+	if (qType === 'Choices') {
+		selectedOptions.splice(0, selectedOptions.length, ...[0, 0, 0, 0])
+		if (entry.answer) {
+			const answers = entry.answer.split(',').map(a => stripHtml(a.trim()))
+			for (let i = 0; i < 4; i++) {
+				const opt = stripHtml(questionDetails.data[`option_${i + 1}`] || '')
+				selectedOptions[i] = answers.includes(opt) ? 1 : 0
+			}
+		}
+	} else if (qType === 'User Input') {
+		possibleAnswer.value = entry.answer || ''
+	} else if (qType === 'Fill In') {
+		if (entry.answer) {
+			const answers = entry.answer.split(',')
+			fillInAnswers.value = answers
+		}
+	} else {
+		possibleAnswer.value = entry.answer || ''
+	}
+}
+
+// Watch for questionDetails.data to be loaded, then restore answer
+watch(
+	() => questionDetails.data,
+	(val) => {
+		if (val && !quiz.data.show_answers) {
+			restoreUserAnswer()
 		}
 	}
 )
