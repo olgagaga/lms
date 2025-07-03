@@ -740,21 +740,21 @@ const checkAnswer = (questionContext = null, isSubmit = false) => {
 				)
 				questionStatuses[context.questionIndex] = {
 					answered: true,
-					isCorrect: quiz.data.show_answers ? isCorrect : null,
+					isCorrect: isCorrect,
 				}
 			} else if (type == 'Fill In') {
 				tempShowAnswers = [...data]
 				const isCorrect = data.every((val) => val === true)
 				questionStatuses[context.questionIndex] = {
 					answered: true,
-					isCorrect: quiz.data.show_answers ? isCorrect : null,
+					isCorrect: isCorrect,
 				}
 			} else if (type == 'User Input') {
 				tempShowAnswers = [data]
 				const isCorrect = data === true
 				questionStatuses[context.questionIndex] = {
 					answered: true,
-					isCorrect: quiz.data.show_answers ? isCorrect : null,
+					isCorrect: isCorrect,
 				}
 			}
 
