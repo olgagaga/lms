@@ -363,31 +363,27 @@
 					class="flex justify-center"
 				/>
 				<div class="mt-5 flex flex-col items-center justify-center">
-    {{ __('You got {0}% correct answers with a score of {1} out of {2}').format(Math.ceil(quizSubmission.data.percentage), quizSubmission.data.score, quizSubmission.data.score_out_of) }}
-    <div v-if="quizSubmission.data.percentage >= quiz.data.passing_percentage" class="text-green-700 font-semibold mt-2">
-        {{ __("Congratulations! You passed the quiz and now can move on! Don't forget to analyze your mistakes") }}
-    </div>
-    <div v-else class="text-red-700 font-semibold mt-2">
-        {{ __("Quiz Failed! You need to try one more time to get quiz passed! Good luck") }}
-    </div>
-    <Button @click="resetQuiz()" class="mt-5"
-        v-if="!quiz.data.max_attempts || attempts?.data.length < quiz.data.max_attempts">
-        <span>{{ __('Try Again') }}</span>
-    </Button>
-</div>
+    				{{ __('You got {0}% correct answers with a score of {1} out of {2}').format(Math.ceil(quizSubmission.data.percentage), quizSubmission.data.score, quizSubmission.data.score_out_of) }}
+    				<div v-if="quizSubmission.data.percentage >= quiz.data.passing_percentage" class="text-green-700 font-semibold mt-2">
+        				{{ __("Congratulations! You passed the quiz and now can move on! Don't forget to analyze your mistakes") }}
+    				</div>
+    				<div v-else class="text-red-700 font-semibold mt-2">
+        				{{ __("Quiz Failed! You need to try one more time to get quiz passed! Good luck") }}
+    				</div>
+    				<Button @click="resetQuiz()" class="mt-5"
+        				v-if="!quiz.data.max_attempts || attempts?.data.length < quiz.data.max_attempts">
+        					<span>{{ __('Try Again') }}</span>
+    				</Button>
+				</div>
 			</div>
 		</div>
 		<div
-			v-if="
-				quiz.data.show_submission_history &&
-				attempts?.data &&
-				attempts.data.length > 0
-			"
+			v-if="shouldShowSubmissionHistory"
 			class="mt-10"
 		>
 			<ListView
 				:columns="getSubmissionColumns()"
-				:rows="attempts?.data"
+				:rows="formattedAttemptsData"
 				row-key="name"
 				:options="{
 					selectable: false,
@@ -411,7 +407,7 @@ import {
 	toast,
 	Checkbox,
 } from 'frappe-ui'
-import { ref, watch, reactive, inject, computed } from 'vue'
+import { ref, watch, reactive, inject, computed, onMounted } from 'vue'
 import { CheckCircle, XCircle, MinusCircle } from 'lucide-vue-next'
 import { timeAgo } from '@/utils'
 import { useRouter } from 'vue-router'
@@ -555,8 +551,16 @@ const attempts = createResource({
 		data.forEach((submission, index) => {
 			submission.creation = timeAgo(submission.creation)
 			submission.idx = index + 1
+			
+			// Ensure score and percentage are properly formatted even when 0
+			submission.score = submission.score || 0
+			submission.percentage = submission.percentage || 0
+			submission.score_out_of = submission.score_out_of || 0
+			
 		})
 	},
+	
+	auto: false // Don't auto-load initially, we'll load it manually
 })
 
 watch(
@@ -564,6 +568,9 @@ watch(
 	() => {
 		if (quiz.data) {
 			populateQuestions()
+			
+			// Load attempts when quiz data is available
+			attempts.reload()
 		}
 		if (quiz.data && quiz.data.max_attempts) {
 			attempts.reload()
@@ -571,6 +578,25 @@ watch(
 		}
 	},
 )
+
+// // Add watcher for attempts resource
+// watch(
+// 	() => attempts.data,
+// 	(newData, oldData) => {
+// 		console.log('🔍 [DEBUG] attempts.data watcher triggered')
+// 		console.log('🔍 [DEBUG] attempts.data changed from:', oldData, 'to:', newData)
+// 		console.log('🔍 [DEBUG] attempts.data length:', newData?.length)
+// 	},
+// 	{ deep: true }
+// )
+
+// // Add watcher for attempts loading state
+// watch(
+// 	() => attempts.loading,
+// 	(isLoading) => {
+// 		console.log('🔍 [DEBUG] attempts.loading changed to:', isLoading)
+// 	}
+// )
 
 const quizSubmission = createResource({
 	url: 'lms.lms.doctype.lms_quiz.lms_quiz.quiz_summary',
@@ -905,7 +931,8 @@ const markLessonProgress = () => {
 }
 
 const getSubmissionColumns = () => {
-	return [
+
+	const columns = [
 		{
 			label: 'No.',
 			key: 'idx',
@@ -930,6 +957,7 @@ const getSubmissionColumns = () => {
 			align: 'center',
 		},
 	]
+	return columns
 }
 
 // Update navigateToQuestion function
@@ -1140,7 +1168,9 @@ const createSubmission = () => {
 				await loadAllQuestionDetails()
 
 				markLessonProgress()
-				if (quiz.data && quiz.data.max_attempts) attempts.reload()
+				if (quiz.data && quiz.data.max_attempts) {
+					attempts.reload()
+				}
 				if (quiz.data.duration) clearInterval(timerInterval)
 			},
 			onError(err) {
@@ -1261,6 +1291,90 @@ watch(
 			restoreUserAnswer()
 		}
 	}
+)
+
+// // Add computed property for debugging submission history
+// const showSubmissionHistoryDebug = computed(() => {
+// 	const showHistory = quiz.data?.show_submission_history
+// 	const hasAttempts = attempts?.data && attempts.data.length > 0
+	
+// 	console.log('🔍 [DEBUG] showSubmissionHistoryDebug computed:')
+// 	console.log('  - showHistory:', showHistory)
+// 	console.log('  - hasAttempts:', hasAttempts)
+// 	console.log('  - attempts.data:', attempts?.data)
+	
+// 	return {
+// 		showHistory,
+// 		hasAttempts,
+// 		shouldDisplay: showHistory && hasAttempts
+// 	}
+// })
+
+// Add computed property for the actual display condition
+const shouldShowSubmissionHistory = computed(() => {
+	const condition = quiz.data?.show_submission_history && 
+		attempts?.data && 
+		attempts.data.length > 0
+	
+	console.log('🔍 [DEBUG] shouldShowSubmissionHistory computed:', condition)
+	console.log('🔍 [DEBUG] Breakdown:')
+	console.log('  - quiz.data?.show_submission_history:', quiz.data?.show_submission_history)
+	console.log('  - attempts?.data:', !!attempts?.data)
+	console.log('  - attempts.data.length > 0:', attempts?.data?.length > 0)
+	
+	return condition
+})
+
+// Add computed property to ensure data is properly formatted for ListView
+const formattedAttemptsData = computed(() => {
+	if (!attempts?.data) return []
+	
+	console.log('🔍 [DEBUG] formattedAttemptsData computed')
+	
+	return attempts.data.map((submission, index) => {
+		const formatted = {
+			...submission,
+			// Ensure 0 values are explicitly set as strings to force display
+			score: submission.score === 0 ? '0' : submission.score,
+			score_out_of: submission.score_out_of === 0 ? '0' : submission.score_out_of,
+			percentage: submission.percentage === 0 ? '0' : submission.percentage
+		}
+		
+		console.log(`🔍 [DEBUG] Formatted submission ${index + 1}:`, {
+			original: {
+				score: submission.score,
+				score_out_of: submission.score_out_of,
+				percentage: submission.percentage
+			},
+			formatted: {
+				score: formatted.score,
+				score_out_of: formatted.score_out_of,
+				percentage: formatted.percentage
+			}
+		})
+		
+		return formatted
+	})
+})
+
+// // Add onMounted hook for debugging
+// onMounted(() => {
+// 	console.log('🔍 [DEBUG] Quiz component mounted')
+// 	console.log('🔍 [DEBUG] user.data:', user.data)
+// 	console.log('🔍 [DEBUG] props.quizName:', props.quizName)
+// })
+
+// Add watcher for user data
+watch(
+	() => user.data,
+	(newUserData) => {
+		console.log('🔍 [DEBUG] user.data changed to:', newUserData)
+		if (newUserData && quiz.data) {
+			console.log('🔍 [DEBUG] User data available, reloading attempts')
+			attempts.reload()
+		}
+	},
+	{ immediate: true }
 )
 </script>
 <style>
