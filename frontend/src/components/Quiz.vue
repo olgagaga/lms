@@ -579,24 +579,6 @@ watch(
 	},
 )
 
-// // Add watcher for attempts resource
-// watch(
-// 	() => attempts.data,
-// 	(newData, oldData) => {
-// 		console.log('🔍 [DEBUG] attempts.data watcher triggered')
-// 		console.log('🔍 [DEBUG] attempts.data changed from:', oldData, 'to:', newData)
-// 		console.log('🔍 [DEBUG] attempts.data length:', newData?.length)
-// 	},
-// 	{ deep: true }
-// )
-
-// // Add watcher for attempts loading state
-// watch(
-// 	() => attempts.loading,
-// 	(isLoading) => {
-// 		console.log('🔍 [DEBUG] attempts.loading changed to:', isLoading)
-// 	}
-// )
 
 const quizSubmission = createResource({
 	url: 'lms.lms.doctype.lms_quiz.lms_quiz.quiz_summary',
@@ -1293,37 +1275,25 @@ watch(
 	}
 )
 
-// // Add computed property for debugging submission history
-// const showSubmissionHistoryDebug = computed(() => {
-// 	const showHistory = quiz.data?.show_submission_history
-// 	const hasAttempts = attempts?.data && attempts.data.length > 0
-	
-// 	console.log('🔍 [DEBUG] showSubmissionHistoryDebug computed:')
-// 	console.log('  - showHistory:', showHistory)
-// 	console.log('  - hasAttempts:', hasAttempts)
-// 	console.log('  - attempts.data:', attempts?.data)
-	
-// 	return {
-// 		showHistory,
-// 		hasAttempts,
-// 		shouldDisplay: showHistory && hasAttempts
-// 	}
-// })
 
 // Add computed property for the actual display condition
+// const shouldShowSubmissionHistory = computed(() => {
+// 	const condition = quiz.data?.show_submission_history && 
+// 		attempts?.data && 
+// 		attempts.data.length > 0
+// 	return condition
+// })
+
 const shouldShowSubmissionHistory = computed(() => {
-	const condition = quiz.data?.show_submission_history && 
-		attempts?.data && 
-		attempts.data.length > 0
-	
-	console.log('🔍 [DEBUG] shouldShowSubmissionHistory computed:', condition)
-	console.log('🔍 [DEBUG] Breakdown:')
-	console.log('  - quiz.data?.show_submission_history:', quiz.data?.show_submission_history)
-	console.log('  - attempts?.data:', !!attempts?.data)
-	console.log('  - attempts.data.length > 0:', attempts?.data?.length > 0)
-	
-	return condition
-})
+    // Only show if quiz is NOT in progress
+    const notInProgress = activeQuestion.value === 0 || !!quizSubmission.data;
+    const condition = notInProgress &&
+        quiz.data?.show_submission_history &&
+        attempts?.data &&
+        attempts.data.length > 0;
+
+    return condition;
+});
 
 // Add computed property to ensure data is properly formatted for ListView
 const formattedAttemptsData = computed(() => {
@@ -1357,12 +1327,6 @@ const formattedAttemptsData = computed(() => {
 	})
 })
 
-// // Add onMounted hook for debugging
-// onMounted(() => {
-// 	console.log('🔍 [DEBUG] Quiz component mounted')
-// 	console.log('🔍 [DEBUG] user.data:', user.data)
-// 	console.log('🔍 [DEBUG] props.quizName:', props.quizName)
-// })
 
 // Add watcher for user data
 watch(
