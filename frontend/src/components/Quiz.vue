@@ -711,6 +711,8 @@ const checkAnswer = (questionContext = null, isSubmit = false) => {
 		questionIndex: activeQuestion.value - 1,
 	}
 
+
+
 	let answers = context.answers
 	const showWarning = allQuestionsAnswered.value || quiz.data.show_answers
 
@@ -740,6 +742,7 @@ const checkAnswer = (questionContext = null, isSubmit = false) => {
 		},
 		auto: true,
 		onSuccess(data) {
+
 			let tempShowAnswers = []
 			let type = context.questionDetails.type
 			if (type == 'Choices') {
@@ -814,6 +817,11 @@ const allQuestionsAnswered = computed(() => {
 const nextQuestion = () => {
 	const currentQuestionIndex = activeQuestion.value - 1
 	const currentQuestionType = questionDetails.data?.type
+
+	// Clear showAnswers array when moving to next question in show_answers mode
+	if (quiz.data.show_answers) {
+		showAnswers.splice(0, showAnswers.length)
+	}
 
 	if (!quiz.data.show_answers && currentQuestionType != 'Open Ended') {
 		const context = {
@@ -950,9 +958,19 @@ const navigateToQuestion = (index) => {
 		return
 	}
 
-	if (quiz.data.show_answers && questionStatuses[index - 1]?.answered) {
-		// Don't allow navigation to answered questions when show_answers is enabled
-		return
+	// Clear showAnswers array when navigating to a new question in show_answers mode
+	if (quiz.data.show_answers && index !== activeQuestion.value) {
+		showAnswers.splice(0, showAnswers.length)
+		
+		// If navigating to an answered question, restore the answers
+		if (questionStatuses[index - 1]?.answered) {
+			const questionName = questions[index - 1].question
+			const quizData = JSON.parse(localStorage.getItem(quiz.data.title) || '[]')
+			const entry = quizData.find(entry => entry.question_name === questionName)
+			if (entry && entry.is_correct) {
+				showAnswers.splice(0, showAnswers.length, ...entry.is_correct)
+			}
+		}
 	}
 
 	if (quiz.data.show_answers || questionDetails.data?.type == 'Open Ended') {
@@ -1292,14 +1310,14 @@ const shouldShowSubmissionHistory = computed(() => {
         attempts?.data &&
         attempts.data.length > 0;
 
+
+
     return condition;
 });
 
 // Add computed property to ensure data is properly formatted for ListView
 const formattedAttemptsData = computed(() => {
 	if (!attempts?.data) return []
-	
-	console.log('🔍 [DEBUG] formattedAttemptsData computed')
 	
 	return attempts.data.map((submission, index) => {
 		const formatted = {
@@ -1310,19 +1328,6 @@ const formattedAttemptsData = computed(() => {
 			percentage: submission.percentage === 0 ? '0' : submission.percentage
 		}
 		
-		console.log(`🔍 [DEBUG] Formatted submission ${index + 1}:`, {
-			original: {
-				score: submission.score,
-				score_out_of: submission.score_out_of,
-				percentage: submission.percentage
-			},
-			formatted: {
-				score: formatted.score,
-				score_out_of: formatted.score_out_of,
-				percentage: formatted.percentage
-			}
-		})
-		
 		return formatted
 	})
 })
@@ -1332,9 +1337,7 @@ const formattedAttemptsData = computed(() => {
 watch(
 	() => user.data,
 	(newUserData) => {
-		console.log('🔍 [DEBUG] user.data changed to:', newUserData)
 		if (newUserData && quiz.data) {
-			console.log('🔍 [DEBUG] User data available, reloading attempts')
 			attempts.reload()
 		}
 	},
