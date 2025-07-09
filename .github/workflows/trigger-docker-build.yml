@@ -1,0 +1,17 @@
+name: Notify Docker Builder
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send dispatch event
+        run: |
+          curl -X POST https://api.github.com/repos/olgagaga/frappe_docker/dispatches \
+            -H "Accept: application/vnd.github.everest-preview+json" \
+            -H "Authorization: token ${{ secrets.PERSONAL_ACCESS_TOKEN }}" \
+            -d '{"event_type": "app_update"}'
