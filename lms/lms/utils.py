@@ -2376,3 +2376,60 @@ def update_chapter_visibility(course, batch, visibility):
 				}).insert()
 
 	return {"success": True}
+
+@frappe.whitelist(allow_guest=True)
+def get_question_subjects():
+    """Return unique subjects from LMS Question."""
+    subjects = frappe.db.get_all(
+        "LMS Question",
+        filters={"subject": ["not in", [None, ""]]},
+        fields=["subject"],
+        group_by="subject"
+    )
+    return [s.subject for s in subjects if s.subject]
+
+@frappe.whitelist(allow_guest=True)
+def get_question_skills(subject=None):
+    """Return unique skills from LMS Question, optionally filtered by subject."""
+    filters = {"skill": ["not in", [None, ""]]}
+    if subject:
+        filters["subject"] = subject
+    skills = frappe.db.get_all(
+        "LMS Question",
+        filters=filters,
+        fields=["skill"],
+        group_by="skill"
+    )
+    return [s.skill for s in skills if s.skill]
+
+@frappe.whitelist(allow_guest=True)
+def get_questions_filtered(subject=None, skill=None, complexity=None, type=None):
+    """
+    Return questions filtered by subject, skill, complexity range, and type.
+    Complexity is a string: '0-0.25', '0.25-0.5', '0.5-0.75', '0.75-1'.
+    """
+    filters = {}
+    if subject:
+        filters["subject"] = subject
+    if skill:
+        filters["skill"] = skill
+    if type:
+        filters["type"] = type
+    if complexity:
+        # Parse range string
+        ranges = {
+            "0-0.25": (0, 0.25),
+            "0.25-0.5": (0.25, 0.5),
+            "0.5-0.75": (0.5, 0.75),
+            "0.75-1": (0.75, 1.0001),  # include 1
+        }
+        if complexity in ranges:
+            min_c, max_c = ranges[complexity]
+            filters["complexity_initial"] = [">=", min_c]
+            filters["complexity_initial"] = ["<", max_c]
+    questions = frappe.get_all(
+        "LMS Question",
+        filters=filters,
+        fields=["name", "question", "subject", "skill", "complexity_initial", "type"]
+    )
+    return questions
