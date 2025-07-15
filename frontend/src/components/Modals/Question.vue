@@ -36,6 +36,36 @@
 					</div>
 					<div class="grid grid-cols-2 gap-4">
 						<FormControl
+							v-model="question.subject"
+							:label="__('Subject')"
+							type="text"
+						/>
+						<FormControl
+							v-model="question.skill"
+							:label="__('Skill')"
+							type="text"
+						/>
+					</div>
+					<div class="grid grid-cols-2 gap-4">
+						<FormControl
+							v-model="question.complexity_initial"
+							:label="__('Complexity Initial (0-1)')"
+							type="number"
+							:min="0"
+							:max="1"
+							:step="0.01"
+						/>
+						<FormControl
+							v-model="question.complexity_adapted"
+							:label="__('Complexity Adapted (0-1)')"
+							type="number"
+							:min="0"
+							:max="1"
+							:step="0.01"
+						/>
+					</div>
+					<div class="grid grid-cols-2 gap-4">
+						<FormControl
 							v-model="question.marks"
 							:label="__('Marks')"
 							type="number"
@@ -185,6 +215,10 @@ const existingQuestion = reactive({
 })
 const question = reactive({
 	question: '',
+	subject: '',
+	skill: '',
+	complexity_initial: 0,
+	complexity_adapted: 0,
 	type: 'Choices',
 	marks: 1,
 })
@@ -406,3 +440,4 @@ input[type='radio']:checked {
 	--tw-ring-color: theme('colors.gray.900') !important;
 }
 </style>
+
