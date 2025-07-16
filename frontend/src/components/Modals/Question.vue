@@ -147,12 +147,6 @@
 							/>
 						</div>
 						<div v-for="n in 4" class="grid grid-cols-2 gap-4">
-							<!-- <FormControl
-								:label="__('Blank') + ' ' + n"
-								v-model="question[`blank_${n}`]"
-								type="text"
-								:required="n == 1 ? true : false"
-							/> -->
 							<FormControl
 								:label="__('Correct Answer') + ' ' + n"
 								v-model="question[`correct_answer_${n}`]"
@@ -167,12 +161,65 @@
 						</div>
 					</div>
 				</div>
-				<div v-else-if="chooseFromExisting" class="space-y-2">
-					<Link
-						v-model="existingQuestion.question"
-						:label="__('Select a question')"
-						doctype="LMS Question"
-					/>
+				<div v-else-if="chooseFromExisting" class="space-y-4">
+					<pre class="bg-surface-gray-2 p-2 text-xs rounded mb-2">
+						subjectOptions: {{ subjectOptions }}
+						skillOptions: {{ skillOptions }}
+						filteredQuestions: {{ filteredQuestions }}
+						filterSubjects: {{ filterSubjects }}
+						filterSkills: {{ filterSkills }}
+						filterComplexity: {{ filterComplexity }}
+						filterTypes: {{ filterTypes }}
+					</pre>
+					<!-- Advanced Filter UI -->
+					<div class="grid grid-cols-2 gap-4 mb-4">
+						<MultiSelect
+							v-model="filterSubjects"
+							:label="__('Subject')"
+							:options="subjectOptions"
+							@update:modelValue="onSubjectChange"
+						/>
+						<MultiSelect
+							v-model="filterSkills"
+							:label="__('Skill')"
+							:options="skillOptions"
+						/>
+					</div>
+					<div class="grid grid-cols-2 gap-4 mb-4">
+						<MultiSelect
+							v-model="filterComplexity"
+							:label="__('Complexity')"
+							:options="complexityOptions"
+						/>
+						<MultiSelect
+							v-model="filterTypes"
+							:label="__('Question Type')"
+							:options="typeOptions"
+						/>
+					</div>
+					<!-- Filtered Questions List -->
+					<div class="mb-4">
+						<label class="block text-xs text-ink-gray-5 mb-2">{{ __('Select question(s)') }}</label>
+						<div class="max-h-48 overflow-y-auto border rounded p-3 bg-surface-gray-1">
+							<div v-if="filteredQuestions.length === 0" class="text-sm text-ink-gray-5">
+								{{ __('No questions match the selected filters.') }}
+							</div>
+							<div v-else v-for="q in filteredQuestions" :key="q.name" class="flex items-center mb-2 p-2 hover:bg-surface-gray-2 rounded">
+								<input
+									type="checkbox"
+									:value="q.name"
+									v-model="existingQuestion.selected"
+									class="mr-3 h-4 w-4"
+								/>
+								<div class="flex-1">
+									<span class="font-medium text-sm">{{ q.question }}</span>
+									<div class="text-xs text-ink-gray-5">
+										{{ q.subject }} / {{ q.skill }} / {{ q.type }} / {{ q.complexity_initial }}
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
 					<FormControl
 						v-model="existingQuestion.marks"
 						:label="__('Marks')"
@@ -193,14 +240,16 @@ import {
 	Dialog,
 	FormControl,
 	TextEditor,
-	createResource,
+	 createResource,
 	Switch,
 	Button,
 	toast,
+	call
 } from 'frappe-ui'
-import { computed, watch, reactive, ref, inject } from 'vue'
+import { computed, watch, reactive, ref, inject, onMounted, toRaw } from 'vue'
 import Link from '@/components/Controls/Link.vue'
 import { useOnboarding } from 'frappe-ui/frappe'
+import MultiSelect from '@/components/Controls/MultiSelect.vue'
 
 const show = defineModel()
 const quiz = defineModel('quiz')
@@ -209,8 +258,51 @@ const editMode = ref(false)
 const user = inject('$user')
 const { updateOnboardingStep } = useOnboarding('learning')
 
+const filterSubjects = ref([])
+const filterSkills = ref([])
+const filterComplexity = ref([])
+const filterTypes = ref([])
+const subjectOptions = ref([])
+const skillOptions = ref([])
+const complexityOptions = [
+	{ value: '0-0.25', description: '[0;0.25)' },
+	{ value: '0.25-0.5', description: '[0.25;0.5)' },
+	{ value: '0.5-0.75', description: '[0.5;0.75)' },
+	{ value: '0.75-1', description: '[0.75;1]' },
+]
+const typeOptions = [
+	{ value: 'Choices', description: 'Choices' },
+	{ value: 'User Input', description: 'User Input' },
+	{ value: 'Open Ended', description: 'Open Ended' },
+	{ value: 'Fill In', description: 'Fill In' },
+]
+const filteredQuestions = ref([])
+
+// Debug: Watchers for all relevant refs
+watch(subjectOptions, (val) => {
+	console.log('[DEBUG] subjectOptions changed:', val)
+})
+watch(skillOptions, (val) => {
+	console.log('[DEBUG] skillOptions changed:', val)
+})
+watch(filteredQuestions, (val) => {
+	console.log('[DEBUG] filteredQuestions changed:', val)
+})
+watch(filterSubjects, (val) => {
+	console.log('[DEBUG] filterSubjects changed:', val)
+})
+watch(filterSkills, (val) => {
+	console.log('[DEBUG] filterSkills changed:', val)
+})
+watch(filterComplexity, (val) => {
+	console.log('[DEBUG] filterComplexity changed:', val)
+})
+watch(filterTypes, (val) => {
+	console.log('[DEBUG] filterTypes changed:', val)
+})
+
 const existingQuestion = reactive({
-	question: '',
+	selected: [],
 	marks: 1,
 })
 const question = reactive({
@@ -274,19 +366,29 @@ const questionData = createResource({
 
 watch(show, () => {
 	if (show.value) {
+		console.log('[Modal] Opened: show.value = true');
 		editMode.value = false
-		if (props.questionDetail.question) questionData.fetch()
-		else {
+		if (props.questionDetail.question) {
+			console.log('[Modal] Editing existing question:', props.questionDetail.question);
+			questionData.fetch()
+		} else {
+			console.log('[Modal] Adding new question');
 			question.question = ''
 			question.marks = 1
 			question.type = 'Choices'
-			existingQuestion.question = ''
+			existingQuestion.selected = []
 			existingQuestion.marks = 1
 			chooseFromExisting.value = false
 			populateFields()
 		}
 
+		if (props.questionDetail.marks) console.log('[Modal] Setting marks from props:', props.questionDetail.marks);
 		if (props.questionDetail.marks) question.marks = props.questionDetail.marks
+
+		console.log('[Modal] Fetching subjects, skills, questions...');
+		fetchSubjects()
+		fetchSkills()
+		fetchQuestions()
 	}
 })
 
@@ -338,7 +440,7 @@ const submitQuestion = () => {
 const addQuestion = () => {
 	if (chooseFromExisting.value) {
 		addQuestionRow({
-			question: existingQuestion.question,
+			question: existingQuestion.selected,
 			marks: existingQuestion.marks,
 		})
 	} else {
@@ -432,6 +534,59 @@ const updateQuestion = () => {
 		}
 	)
 }
+
+// Fetch subjects and skills
+const fetchSubjects = async () => {
+	console.log('[fetchSubjects] Called');
+	try {
+		const res = await call('lms.lms.utils.get_question_subjects')
+		console.log('[fetchSubjects] Response:', res);
+		// Check what res actually contains
+		subjectOptions.value = (res || []).map(s => ({ value: s, description: s }))
+		console.log('[fetchSubjects] subjectOptions.value set to:', toRaw(subjectOptions.value))
+	} catch (err) {
+		console.error('[fetchSubjects] Error:', err);
+	}
+}
+const fetchSkills = async () => {
+	console.log('[fetchSkills] Called with subjects:', filterSubjects.value);
+	try {
+		const res = await call('lms.lms.utils.get_question_skills', { subject: JSON.stringify(filterSubjects.value) })
+		console.log('[fetchSkills] Response:', res);
+		skillOptions.value = (res || []).map(s => ({ value: s, description: s }))
+		console.log('[fetchSkills] skillOptions.value set to:', toRaw(skillOptions.value))
+	} catch (err) {
+		console.error('[fetchSkills] Error:', err);
+	}
+}
+const fetchQuestions = async () => {
+	const params = {}
+	if (filterSubjects.value.length) params.subject = JSON.stringify(filterSubjects.value)
+	if (filterSkills.value.length) params.skill = JSON.stringify(filterSkills.value)
+	if (filterComplexity.value.length) params.complexity = JSON.stringify(filterComplexity.value)
+	if (filterTypes.value.length) params.type = JSON.stringify(filterTypes.value)
+	console.log('[fetchQuestions] Called with params:', params);
+	try {
+		const res = await call('lms.lms.utils.get_questions_filtered', params)
+		console.log('[fetchQuestions] Response:', res);
+		filteredQuestions.value = res || []
+		console.log('[fetchQuestions] filteredQuestions.value set to:', toRaw(filteredQuestions.value))
+	} catch (err) {
+		console.error('[fetchQuestions] Error:', err);
+	}
+}
+
+const onSubjectChange = async () => {
+	await fetchSkills()
+	await fetchQuestions()
+}
+watch([filterSubjects, filterSkills, filterComplexity, filterTypes], fetchQuestions)
+
+onMounted(() => {
+	fetchSubjects()
+	fetchSkills()
+	fetchQuestions()
+})
 </script>
 <style>
 input[type='radio']:checked {
@@ -440,4 +595,3 @@ input[type='radio']:checked {
 	--tw-ring-color: theme('colors.gray.900') !important;
 }
 </style>
-

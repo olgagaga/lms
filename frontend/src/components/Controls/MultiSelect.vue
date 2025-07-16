@@ -117,7 +117,8 @@ const props = defineProps({
 	},
 	doctype: {
 		type: String,
-		required: true,
+		required: false,
+		default: null,
 	},
 	filters: {
 		type: Object,
@@ -133,6 +134,10 @@ const props = defineProps({
 	},
 	required: {
 		type: Boolean,
+	},
+	options: {
+		type: Array,
+		default: () => [],
 	},
 })
 
@@ -156,30 +161,39 @@ const selectedValue = computed({
 	},
 })
 
-watchDebounced(
-	query,
-	(val) => {
-		val = val || ''
-		if (text.value === val) return
-		text.value = val
-		reload(val)
-	},
-	{ debounce: 300, immediate: true }
-)
+// Only set up filterOptions and reload if doctype is provided
+if (props.doctype) {
+	watchDebounced(
+		query,
+		(val) => {
+			val = val || ''
+			if (text.value === val) return
+			text.value = val
+			reload(val)
+		},
+		{ debounce: 300, immediate: true }
+	)
+}
 
-const filterOptions = createResource({
-	url: 'frappe.desk.search.search_link',
-	method: 'POST',
-	cache: [text.value, props.doctype],
-	auto: true,
-	params: {
-		txt: text.value,
-		doctype: props.doctype,
-	},
-})
+let filterOptions = null;
+if (props.doctype) {
+    filterOptions = createResource({
+        url: 'frappe.desk.search.search_link',
+        method: 'POST',
+        cache: [text.value, props.doctype],
+        auto: true,
+        params: {
+            txt: text.value,
+            doctype: props.doctype,
+        },
+    });
+}
 
 const options = computed(() => {
-	return filterOptions.data || []
+    if (props.doctype && filterOptions) {
+        return filterOptions.data || []
+    }
+    return props.options || []
 })
 
 function reload(val) {

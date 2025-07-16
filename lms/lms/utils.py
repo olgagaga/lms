@@ -2390,10 +2390,16 @@ def get_question_subjects():
 
 @frappe.whitelist(allow_guest=True)
 def get_question_skills(subject=None):
-    """Return unique skills from LMS Question, optionally filtered by subject."""
+    """Return unique skills from LMS Question, optionally filtered by subject (can be a list)."""
     filters = {"skill": ["not in", [None, ""]]}
     if subject:
-        filters["subject"] = subject
+        if isinstance(subject, str) and subject.startswith("["):
+            import json
+            subject = json.loads(subject)
+        if isinstance(subject, list):
+            filters["subject"] = ["in", subject]
+        else:
+            filters["subject"] = subject
     skills = frappe.db.get_all(
         "LMS Question",
         filters=filters,
@@ -2406,30 +2412,66 @@ def get_question_skills(subject=None):
 def get_questions_filtered(subject=None, skill=None, complexity=None, type=None):
     """
     Return questions filtered by subject, skill, complexity range, and type.
-    Complexity is a string: '0-0.25', '0.25-0.5', '0.5-0.75', '0.75-1'.
+    Each filter can be a list (JSON string) or a single value.
+    Complexity is a list of strings: '0-0.25', '0.25-0.5', '0.5-0.75', '0.75-1'.
     """
+    import json
     filters = {}
     if subject:
-        filters["subject"] = subject
+        if isinstance(subject, str) and subject.startswith("["):
+            subject = json.loads(subject)
+        if isinstance(subject, list):
+            filters["subject"] = ["in", subject]
+        else:
+            filters["subject"] = subject
     if skill:
-        filters["skill"] = skill
+        if isinstance(skill, str) and skill.startswith("["):
+            skill = json.loads(skill)
+        if isinstance(skill, list):
+            filters["skill"] = ["in", skill]
+        else:
+            filters["skill"] = skill
     if type:
-        filters["type"] = type
+        if isinstance(type, str) and type.startswith("["):
+            type = json.loads(type)
+        if isinstance(type, list):
+            filters["type"] = ["in", type]
+        else:
+            filters["type"] = type
+    # Complexity: build OR filter for ranges
     if complexity:
-        # Parse range string
+        if isinstance(complexity, str) and complexity.startswith("["):
+            complexity = json.loads(complexity)
         ranges = {
             "0-0.25": (0, 0.25),
             "0.25-0.5": (0.25, 0.5),
             "0.5-0.75": (0.5, 0.75),
-            "0.75-1": (0.75, 1.0001),  # include 1
+            "0.75-1": (0.75, 1.0001),
         }
-        if complexity in ranges:
-            min_c, max_c = ranges[complexity]
-            filters["complexity_initial"] = [">=", min_c]
-            filters["complexity_initial"] = ["<", max_c]
-    questions = frappe.get_all(
-        "LMS Question",
-        filters=filters,
-        fields=["name", "question", "subject", "skill", "complexity_initial", "type"]
-    )
-    return questions
+        or_filters = []
+        for c in complexity:
+            if c in ranges:
+                min_c, max_c = ranges[c]
+                or_filters.append({"complexity_initial": [">=", min_c]})
+                or_filters.append({"complexity_initial": ["<", max_c]})
+        # Frappe get_all does not support or_filters directly, so do a manual filter after fetch
+        questions = frappe.get_all(
+            "LMS Question",
+            filters=filters,
+            fields=["name", "question", "subject", "skill", "complexity_initial", "type"]
+        )
+        def in_any_range(val):
+            for c in complexity:
+                if c in ranges:
+                    min_c, max_c = ranges[c]
+                    if min_c <= (val or 0) < max_c or (c == "0.75-1" and min_c <= (val or 0) <= 1):
+                        return True
+            return False
+        return [q for q in questions if in_any_range(q["complexity_initial"])]
+    else:
+        questions = frappe.get_all(
+            "LMS Question",
+            filters=filters,
+            fields=["name", "question", "subject", "skill", "complexity_initial", "type"]
+        )
+        return questions
