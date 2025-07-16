@@ -580,7 +580,11 @@ const onSubjectChange = async () => {
 	await fetchSkills()
 	await fetchQuestions()
 }
-watch([filterSubjects, filterSkills, filterComplexity, filterTypes], fetchQuestions)
+watch(
+	[() => filterSubjects.value, () => filterSkills.value, () => filterComplexity.value, () => filterTypes.value], 
+	fetchQuestions,
+	{deep: true}
+)
 
 onMounted(() => {
 	fetchSubjects()
