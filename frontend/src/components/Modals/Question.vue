@@ -162,15 +162,6 @@
 					</div>
 				</div>
 				<div v-else-if="chooseFromExisting" class="space-y-4">
-					<pre class="bg-surface-gray-2 p-2 text-xs rounded mb-2">
-						subjectOptions: {{ subjectOptions }}
-						skillOptions: {{ skillOptions }}
-						filteredQuestions: {{ filteredQuestions }}
-						filterSubjects: {{ filterSubjects }}
-						filterSkills: {{ filterSkills }}
-						filterComplexity: {{ filterComplexity }}
-						filterTypes: {{ filterTypes }}
-					</pre>
 					<!-- Advanced Filter UI -->
 					<div class="grid grid-cols-2 gap-4 mb-4">
 						<MultiSelect
@@ -277,29 +268,6 @@ const typeOptions = [
 	{ value: 'Fill In', description: 'Fill In' },
 ]
 const filteredQuestions = ref([])
-
-// Debug: Watchers for all relevant refs
-watch(subjectOptions, (val) => {
-	console.log('[DEBUG] subjectOptions changed:', val)
-})
-watch(skillOptions, (val) => {
-	console.log('[DEBUG] skillOptions changed:', val)
-})
-watch(filteredQuestions, (val) => {
-	console.log('[DEBUG] filteredQuestions changed:', val)
-})
-watch(filterSubjects, (val) => {
-	console.log('[DEBUG] filterSubjects changed:', val)
-})
-watch(filterSkills, (val) => {
-	console.log('[DEBUG] filterSkills changed:', val)
-})
-watch(filterComplexity, (val) => {
-	console.log('[DEBUG] filterComplexity changed:', val)
-})
-watch(filterTypes, (val) => {
-	console.log('[DEBUG] filterTypes changed:', val)
-})
 
 const existingQuestion = reactive({
 	selected: [],
@@ -437,12 +405,35 @@ const submitQuestion = () => {
 	else addQuestion()
 }
 
-const addQuestion = () => {
+const addQuestion = async () => {
 	if (chooseFromExisting.value) {
-		addQuestionRow({
-			question: existingQuestion.selected,
-			marks: existingQuestion.marks,
-		})
+		// for (const qName of existingQuestion.selected) {
+        //     addQuestionRow({
+        //         question: qName,
+        //         marks: existingQuestion.marks,
+        //     });
+        // }
+
+		for (let i = 0; i < existingQuestion.selected.length; i++) {
+            const qName = existingQuestion.selected[i];
+            
+            await new Promise((resolve, reject) => {
+                questionRow.submit(
+                    {
+                        question: qName,
+                        marks: existingQuestion.marks,
+                    },
+                    {
+                        onSuccess: () => setTimeout(resolve, 200), // 200ms delay
+                        onError: reject,
+                    }
+                );
+            });
+        }
+        
+        show.value = false
+        toast.success(__('Questions added successfully'))
+        quiz.value.reload()
 	} else {
 		questionCreation.submit(
 			{},
@@ -583,6 +574,11 @@ const onSubjectChange = async () => {
 watch(
 	[() => filterSubjects.value, () => filterSkills.value, () => filterComplexity.value, () => filterTypes.value], 
 	fetchQuestions,
+	{deep: true}
+)
+
+watch(() => filterSubjects.value, 
+	fetchSkills,
 	{deep: true}
 )
 

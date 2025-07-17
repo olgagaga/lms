@@ -1,4 +1,5 @@
 import re
+import json
 import string
 import frappe
 import hashlib
@@ -2391,21 +2392,29 @@ def get_question_subjects():
 @frappe.whitelist(allow_guest=True)
 def get_question_skills(subject=None):
     """Return unique skills from LMS Question, optionally filtered by subject (can be a list)."""
+    print(f"Subject: {subject}")
+    subject = subject.replace("[", '').replace("]", '').replace("\"", "")
+    subject = subject.split(",")
+    if subject == [""]:
+        subject = []
     filters = {"skill": ["not in", [None, ""]]}
+    print(f"Changed Subject: {subject}")
     if subject:
+        print("non null subject")
         if isinstance(subject, str) and subject.startswith("["):
-            import json
+            
             subject = json.loads(subject)
         if isinstance(subject, list):
             filters["subject"] = ["in", subject]
         else:
-            filters["subject"] = subject
+            filters["subject"] = subject 
     skills = frappe.db.get_all(
         "LMS Question",
         filters=filters,
         fields=["skill"],
         group_by="skill"
     )
+    print(f"Skills: {skills}")
     return [s.skill for s in skills if s.skill]
 
 @frappe.whitelist(allow_guest=True)
