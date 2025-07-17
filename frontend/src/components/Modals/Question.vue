@@ -195,15 +195,31 @@
 							<div v-if="filteredQuestions.length === 0" class="text-sm text-ink-gray-5">
 								{{ __('No questions match the selected filters.') }}
 							</div>
-							<div v-else v-for="q in filteredQuestions" :key="q.name" class="flex items-center mb-2 p-2 hover:bg-surface-gray-2 rounded">
-								<input
+							<div 
+								v-else 
+								v-for="q in filteredQuestions" 
+								:key="q.name" 
+								class="flex items-center mb-2 p-2 hover:bg-surface-gray-2 rounded cursor-pointer"
+								@click="toggleExistingQuestion(q.name)"
+							>
+							<!-- @click="existingQuestion.selected.push(q.name)", -->
+								<!-- <input
 									type="checkbox"
 									:value="q.name"
 									v-model="existingQuestion.selected"
 									class="mr-3 h-4 w-4"
+									@click.stop
+								/> -->
+
+								<FormControl
+    								type="checkbox"
+    								:modelValue="existingQuestion.selected.includes(q.name)"
+    								@update:modelValue="checked => toggleExistingQuestion(q.name)"
+    								class="mr-3"
 								/>
+
 								<div class="flex-1">
-									<span class="font-medium text-sm">{{ q.question }}</span>
+									<span class="font-medium text-sm">{{ q.name }}: {{ stripHtmlTags(q.question) }}</span>
 									<div class="text-xs text-ink-gray-5">
 										{{ q.subject }} / {{ q.skill }} / {{ q.type }} / {{ q.complexity_initial }}
 									</div>
@@ -587,6 +603,21 @@ onMounted(() => {
 	fetchSkills()
 	fetchQuestions()
 })
+
+function toggleExistingQuestion(name) {
+    const idx = existingQuestion.selected.indexOf(name)
+    if (idx === -1) {
+        existingQuestion.selected.push(name)
+    } else {
+        existingQuestion.selected.splice(idx, 1)
+    }
+}
+
+function stripHtmlTags(str) {
+    if (!str) return '';
+    return str.replace(/<[^>]*>/g, '');
+}
+
 </script>
 <style>
 input[type='radio']:checked {
