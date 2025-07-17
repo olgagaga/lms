@@ -191,18 +191,24 @@
 					<!-- Filtered Questions List -->
 					<div class="mb-4">
 						<label class="block text-xs text-ink-gray-5 mb-2">{{ __('Select question(s)') }}</label>
+						<!-- Search input -->
+						<input
+							v-model="searchTerm"
+							type="text"
+							class="mb-2 w-full px-2 py-1 border rounded text-sm"
+							:placeholder="__('Search questions...')"
+						/>
 						<div class="max-h-48 overflow-y-auto border rounded p-3 bg-surface-gray-1">
-							<div v-if="filteredQuestions.length === 0" class="text-sm text-ink-gray-5">
+							<div v-if="visibleQuestions.length === 0" class="text-sm text-ink-gray-5">
 								{{ __('No questions match the selected filters.') }}
 							</div>
 							<div 
 								v-else 
-								v-for="q in filteredQuestions" 
+								v-for="q in visibleQuestions" 
 								:key="q.name" 
 								class="flex items-center mb-2 p-2 hover:bg-surface-gray-2 rounded cursor-pointer"
 								@click="toggleExistingQuestion(q.name)"
 							>
-							<!-- @click="existingQuestion.selected.push(q.name)", -->
 								<!-- <input
 									type="checkbox"
 									:value="q.name"
@@ -284,6 +290,23 @@ const typeOptions = [
 	{ value: 'Fill In', description: 'Fill In' },
 ]
 const filteredQuestions = ref([])
+
+// Add search term and computed visibleQuestions
+const searchTerm = ref('')
+const visibleQuestions = computed(() => {
+    if (!searchTerm.value) return filteredQuestions.value
+    const term = searchTerm.value.toLowerCase()
+    return filteredQuestions.value.filter(q => {
+        // Search in question text, subject, skill, type, and name
+        return (
+            (q.question && stripHtmlTags(q.question).toLowerCase().includes(term)) ||
+            (q.subject && q.subject.toLowerCase().includes(term)) ||
+            (q.skill && q.skill.toLowerCase().includes(term)) ||
+            (q.type && q.type.toLowerCase().includes(term)) ||
+            (q.name && q.name.toLowerCase().includes(term))
+        )
+    })
+})
 
 const existingQuestion = reactive({
 	selected: [],
@@ -423,29 +446,34 @@ const submitQuestion = () => {
 
 const addQuestion = async () => {
 	if (chooseFromExisting.value) {
-		// for (const qName of existingQuestion.selected) {
-        //     addQuestionRow({
-        //         question: qName,
-        //         marks: existingQuestion.marks,
-        //     });
-        // }
 
-		for (let i = 0; i < existingQuestion.selected.length; i++) {
-            const qName = existingQuestion.selected[i];
-            
-            await new Promise((resolve, reject) => {
-                questionRow.submit(
-                    {
-                        question: qName,
-                        marks: existingQuestion.marks,
-                    },
-                    {
-                        onSuccess: () => setTimeout(resolve, 200), // 200ms delay
-                        onError: reject,
-                    }
-                );
-            });
-        }
+		// Get already added question names
+		const alreadyAdded = new Set(
+ 	    	(quiz.value.data.questions || []).map(q => q.question)
+		);
+
+		// Filter out already added questions
+		const toAdd = existingQuestion.selected.filter(qName => !alreadyAdded.has(qName));
+
+		for (let i = 0; i < toAdd.length; i++) {
+    		const qName = toAdd[i];
+    		await new Promise((resolve, reject) => {
+        		questionRow.submit(
+            		{
+                		question: qName,
+                		marks: existingQuestion.marks,
+            		},
+            		{
+                		onSuccess: () => setTimeout(resolve, 200),
+                		onError: reject,
+            		}
+        		);	
+    		});
+		}
+
+		if (toAdd.length < existingQuestion.selected.length) {
+    		toast.info(__('Some questions were already in the quiz and were skipped.'));
+		}
         
         show.value = false
         toast.success(__('Questions added successfully'))
