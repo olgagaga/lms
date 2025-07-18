@@ -1547,7 +1547,7 @@ def get_country_code():
 
 @frappe.whitelist()
 def get_question_details(question):
-	fields = ["question", "type", "multiple", "text_with_blanks"]
+	fields = ["question", "type", "multiple", "text_with_blanks", "common_explanation"]
 	for i in range(1, 5):
 		fields.append(f"option_{i}")
 		fields.append(f"explanation_{i}")

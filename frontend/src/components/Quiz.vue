@@ -300,6 +300,11 @@
 							</div>
 						</div>
 						<div class="text-ink-gray-9 font-semibold mt-2 leading-5" v-html="questionDetailsStore[question.question].question"></div>
+						<!-- Show common explanation if present -->
+						<div v-if="questionDetailsStore[question.question].common_explanation" class="mt-2 text-xs text-ink-gray-7">
+							<strong>{{ __('Explanation: ') }}</strong>
+							<span>{{ questionDetailsStore[question.question].common_explanation }}</span>
+						</div>
 						<div v-if="questionDetailsStore[question.question].type == 'Choices'" v-for="index in 4">
 							<label v-if="questionDetailsStore[question.question][`option_${index}`]"
 								class="flex items-center bg-surface-gray-3 rounded-md p-3 mt-4 w-full">
@@ -347,7 +352,7 @@
 							</div>
 						</div>
 						<div class="mt-2 text-xs text-ink-gray-7">
-							<strong>{{ __('Correct Answer:') }}</strong>
+							<strong>{{ __('Correct Answer: ') }}</strong>
 							<span>{{ formatCorrectAnswer(questionDetailsStore[question.question]) }}</span>
 						</div>
 					</div>
