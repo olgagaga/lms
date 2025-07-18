@@ -10,6 +10,7 @@
  "engine": "InnoDB",
  "field_order": [
   "question",
+  "common_explanation",
   "type",
   "subject",
   "skill",
@@ -52,6 +53,12 @@
    "fieldtype": "Text Editor",
    "in_list_view": 1,
    "label": "Question"
+  },
+  {
+   "fieldname": "common_explanation",
+   "fieldtype": "Small Text",
+   "label": "Common Explanation",
+   "reqd": 0
   },
   {
    "fieldname": "type",

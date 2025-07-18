@@ -34,6 +34,15 @@
 							editorClass="prose-sm max-w-none border-b border-x bg-surface-gray-2 rounded-b-md py-1 px-2 min-h-[7rem]"
 						/>
 					</div>
+					<!-- Common Explanation field -->
+					<div>
+						<FormControl
+							v-model="question.common_explanation"
+							type="textarea"
+							:label="__('Common Explanation')"
+							:required="false"
+						/>
+					</div>
 					<div class="grid grid-cols-2 gap-4">
 						<FormControl
 							v-model="question.subject"
@@ -314,6 +323,7 @@ const existingQuestion = reactive({
 })
 const question = reactive({
 	question: '',
+	common_explanation: '',
 	subject: '',
 	skill: '',
 	complexity_initial: 0,
@@ -368,6 +378,7 @@ const questionData = createResource({
 			counter++
 		}
 		question.marks = props.questionDetail.marks
+		if (data.common_explanation !== undefined) question.common_explanation = data.common_explanation || ''
 	},
 })
 

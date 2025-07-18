@@ -124,7 +124,7 @@ def get_question_details(question):
 	if not has_course_instructor_role() or not has_course_moderator_role():
 		return
 
-	fields = ["question", "type", "name"]
+	fields = ["question", "type", "name", "common_explanation"]
 	for i in range(1, 5):
 		fields.append(f"option_{i}")
 		fields.append(f"is_correct_{i}")
