@@ -175,7 +175,8 @@
 							class="my-2"
 						/>
 						<div v-if="allShowAnswers[qtidx]?.length">
-							<Badge v-if="allShowAnswers[qtidx][0]" :label="__('Correct')" theme="green">
+							<!-- Debug info -->
+							<Badge v-if="allShowAnswers[qtidx][0] === 1 || allShowAnswers[qtidx][0] === true" :label="__('Correct')" theme="green">
 								<template #prefix>
 									<CheckCircle class="w-4 h-4 text-ink-green-2 mr-1" />
 								</template>
@@ -338,7 +339,7 @@
 								class="my-2"
 							/>
 							<div v-if="showAnswers.length">
-								<Badge v-if="showAnswers[0]" :label="__('Correct')" theme="green">
+								<Badge v-if="showAnswers[0] === 1 || showAnswers[0] === true" :label="__('Correct')" theme="green">
 									<template #prefix>
 										<CheckCircle class="w-4 h-4 text-ink-green-2 mr-1" />
 									</template>
@@ -979,7 +980,12 @@ const checkAnswer = (questionContext = null, isSubmit = false) => {
 		questionIndex: activeQuestion.value - 1,
 	}
 
-
+	console.log('🔍 checkAnswer called:', {
+		questionName: context.questionName,
+		questionType: context.questionDetails.type,
+		answers: context.answers,
+		isSubmit
+	})
 
 	let answers = context.answers
 	const showWarning = allQuestionsAnswered.value || quiz.data.show_answers
@@ -1010,7 +1016,6 @@ const checkAnswer = (questionContext = null, isSubmit = false) => {
 		},
 		auto: true,
 		onSuccess(data) {
-
 			let tempShowAnswers = []
 			let type = context.questionDetails.type
 			if (type == 'Choices') {
@@ -1039,16 +1044,20 @@ const checkAnswer = (questionContext = null, isSubmit = false) => {
 				}
 			} else if (type == 'User Input') {
 				tempShowAnswers = [data]
-				const isCorrect = data === true
+				const isCorrect = data === 1 || data === true
+				
 				questionStatuses[context.questionIndex] = {
 					answered: true,
 					isCorrect: isCorrect,
 				}
 			}
 
-			addToLocalStorage(context.questionName, context.answers, tempShowAnswers)
+			
+			addToLocalStorage(context.questionName, context.answers, tempShowAnswers, context.questionDetails.type)
+
 			if (quiz.data.show_answers) {
 				showAnswers.splice(0, showAnswers.length, ...tempShowAnswers)
+				
 			}
 		},
 	})
@@ -1100,14 +1109,15 @@ const checkAllAnswers = () => {
 					}
 				} else if (type == 'User Input') {
 					tempShowAnswers = [data]
-					const isCorrect = data === true
+					const isCorrect = data === 1 || data === true
 					questionStatuses[index] = {
 						answered: true,
 						isCorrect: isCorrect,
 					}
 				}
 
-				addToLocalStorage(question.question, answers, tempShowAnswers)
+				addToLocalStorage(question.question, answers, tempShowAnswers, type)
+				
 				if (quiz.data.show_answers) {
 					allShowAnswers[index] = tempShowAnswers
 				}
@@ -1120,22 +1130,41 @@ const addToLocalStorage = (
 	questionName,
 	answers,
 	correctness = [undefined],
+	questionType = null,
 ) => {
 	let quizData = JSON.parse(localStorage.getItem(quiz.data.title)) || []
 	quizData = quizData.filter(entry => entry.question_name !== questionName)
-	// If correctness is empty, set to [false] for User Input
-	if ((!correctness || correctness.length === 0 || correctness.every(x => x === undefined)) && questionDetails.data?.type === 'User Input') {
-		correctness = [false]
+	
+	// Handle correctness for different question types
+	let processedCorrectness = correctness
+	const type = questionType || questionDetails.data?.type
+	
+	if (type === 'User Input') {
+		// For User Input, ensure we always have a boolean value
+		if (!correctness || correctness.length === 0 || correctness.every(x => x === undefined)) {
+			processedCorrectness = [false]
+		} else {
+			// Keep the actual boolean value (true/false) for User Input
+			processedCorrectness = correctness
+		}
+	} else {
+		// For other question types, filter out undefined values
+		processedCorrectness = correctness.filter((answer) => {
+			return answer != undefined
+		})
 	}
+	
 	let questionData = {
 		question_name: questionName,
 		answer: answers.join(),
-		is_correct: correctness.filter((answer) => {
-			return answer != undefined
-		}),
+		is_correct: processedCorrectness,
 	}
+
 	quizData.push(questionData)
 	localStorage.setItem(quiz.data.title, JSON.stringify(quizData))
+	
+	// Log the updated localStorage
+	const updatedData = JSON.parse(localStorage.getItem(quiz.data.title) || '[]')
 }
 
 // Add a computed property to check if all questions are answered
@@ -1167,7 +1196,7 @@ const nextQuestion = () => {
 	} else if (currentQuestionType == 'Open Ended') {
 		const answers = getAnswers()
 		if (answers[0]) {
-			addToLocalStorage(currentQuestion.value, answers)
+			addToLocalStorage(currentQuestion.value, answers, undefined, 'Open Ended')
 			questionStatuses[currentQuestionIndex].answered = true
 		}
 	}
@@ -1238,10 +1267,10 @@ const submitQuiz = () => {
 							isCorrect = data.every((val) => val === true)
 						} else if (type == 'User Input') {
 							tempShowAnswers = [data]
-							isCorrect = data === true
+							isCorrect = data === 1 || data === true
 						}
 
-						addToLocalStorage(question.question, answers, tempShowAnswers)
+						addToLocalStorage(question.question, answers, tempShowAnswers, type)
 						questionStatuses[index] = {
 							answered: true,
 							isCorrect: isCorrect,
@@ -1377,7 +1406,7 @@ const navigateToQuestion = (index) => {
 		// Save current answer before navigating
 		if (questionDetails.data?.type == 'Open Ended') {
 			const answers = getAnswers()
-			addToLocalStorage(currentQuestion.value, answers)
+			addToLocalStorage(currentQuestion.value, answers, undefined, 'Open Ended')
 			questionStatuses[activeQuestion.value - 1] = {
 				answered: true,
 				isCorrect: null,
@@ -1391,7 +1420,7 @@ const navigateToQuestion = (index) => {
 				answered: true,
 				isCorrect: null,
 			}
-			addToLocalStorage(currentQuestion.value, answers)
+			addToLocalStorage(currentQuestion.value, answers, undefined, 'User Input')
 		} else {
 			checkAnswer()
 		}
@@ -1757,6 +1786,7 @@ watch(
 	},
 	{ immediate: true }
 )
+
 </script>
 <style>
 p {
