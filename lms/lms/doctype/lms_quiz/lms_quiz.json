@@ -11,6 +11,7 @@
   "max_attempts",
   "show_answers",
   "show_submission_history",
+  "show_all_questions",
   "column_break_gaac",
   "total_marks",
   "passing_percentage",
@@ -90,6 +91,12 @@
    "fieldname": "show_submission_history",
    "fieldtype": "Check",
    "label": "Show Submission History"
+  },
+  {
+   "default": "0",
+   "fieldname": "show_all_questions",
+   "fieldtype": "Check",
+   "label": "Show All Questions on One Page"
   },
   {
    "fieldname": "passing_percentage",

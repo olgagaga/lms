@@ -107,6 +107,7 @@ def quiz_renderer(quiz_name):
 			"max_attempts",
 			"show_answers",
 			"show_submission_history",
+			"show_all_questions",
 			"passing_percentage",
 		],
 		as_dict=True,

@@ -89,6 +89,11 @@
 							type="checkbox"
 							:label="__('Show Submission History')"
 						/>
+						<FormControl
+							v-model="quiz.show_all_questions"
+							type="checkbox"
+							:label="__('Show All Questions on One Page')"
+						/>
 					</div>
 				</div>
 
@@ -242,6 +247,7 @@ const quiz = reactive({
 	limit_questions_to: 0,
 	show_answers: true,
 	show_submission_history: false,
+	show_all_questions: false,
 	shuffle_questions: false,
 	questions: [],
 })
@@ -294,6 +300,7 @@ const quizDetails = createResource({
 		let checkboxes = [
 			'show_answers',
 			'show_submission_history',
+			'show_all_questions',
 			'shuffle_questions',
 		]
 		for (let idx in checkboxes) {

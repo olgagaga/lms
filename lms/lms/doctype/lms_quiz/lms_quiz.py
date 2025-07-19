@@ -146,7 +146,7 @@ def process_results(results, quiz):
 		result["marks_out_of"] = question_details.marks
 
 		if question_details.type != "Open Ended":
-			# correct = False;
+			correct = False
 			if len(result["is_correct"]) > 0:
 				correct = result["is_correct"][0]
 				for point in result["is_correct"]:

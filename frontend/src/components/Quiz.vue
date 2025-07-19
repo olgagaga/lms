@@ -77,18 +77,16 @@
 			</div>
 		</div>
 		<div v-else-if="!quizSubmission.data">
-			<div v-for="(question, qtidx) in questions">
-				<div
-					v-if="qtidx == activeQuestion - 1 && questionDetails.data"
-					class="border rounded-md p-5"
-				>
+			<!-- Single page display for all questions -->
+			<div v-if="quiz.data?.show_all_questions && activeQuestion === -1" class="space-y-6">
+				<div v-for="(question, qtidx) in questions" :key="qtidx" class="border rounded-md p-5">
 					<div class="flex justify-between">
 						<div class="text-sm text-ink-gray-5">
 							<span class="mr-2">
-								{{ __('Question {0}').format(activeQuestion) }}:
+								{{ __('Question {0}').format(qtidx + 1) }}:
 							</span>
 							<span>
-								{{ getInstructions(questionDetails.data) }}
+								{{ getInstructions(allQuestionDetails[qtidx]) }}
 							</span>
 						</div>
 						<div
@@ -98,46 +96,46 @@
 							{{ question.marks == 1 ? __('Mark') : __('Marks') }}
 							<Checkbox
 								size="sm"
-								v-model="flaggedQuestions[activeQuestion - 1]"
+								v-model="flaggedQuestions[qtidx]"
 								:label="__('Flag')"
 							/>
 						</div>
 					</div>
 					<div
 						class="text-ink-gray-9 font-semibold mt-2 leading-5"
-						v-html="questionDetails.data.question"
+						v-html="allQuestionDetails[qtidx]?.question"
 					></div>
-					<div v-if="questionDetails.data.type == 'Choices'" v-for="index in 4">
+					<div v-if="allQuestionDetails[qtidx]?.type == 'Choices'" v-for="index in 4">
 						<label
-							v-if="questionDetails.data[`option_${index}`]"
+							v-if="allQuestionDetails[qtidx][`option_${index}`]"
 							:class="[
 								'flex items-center rounded-md p-3 mt-4 w-full cursor-pointer focus:border-blue-600',
-								selectedOptions[index - 1] ? 'bg-surface-gray-4' : 'bg-surface-gray-3'
+								allSelectedOptions[qtidx][index - 1] ? 'bg-surface-gray-4' : 'bg-surface-gray-3'
 							]"
 						>
 							<input
-								v-if="!showAnswers.length && !questionDetails.data.multiple"
+								v-if="!allShowAnswers[qtidx]?.length && !allQuestionDetails[qtidx].multiple"
 								type="radio"
-								:name="encodeURIComponent(questionDetails.data.question)"
+								:name="encodeURIComponent(allQuestionDetails[qtidx].question) + '_' + qtidx"
 								class="w-3.5 h-3.5 text-ink-gray-9 focus:ring-outline-gray-modals"
-								v-model="selectedOptions[index - 1]"
+								v-model="allSelectedOptions[qtidx][index - 1]"
 								:value="1"
-								@change="markAnswer(index)"
+								@change="markAnswerForQuestion(qtidx, index)"
 							/>
 
 							<input
-								v-else-if="!showAnswers.length && questionDetails.data.multiple"
+								v-else-if="!allShowAnswers[qtidx]?.length && allQuestionDetails[qtidx].multiple"
 								type="checkbox"
-								:name="encodeURIComponent(questionDetails.data.question)"
+								:name="encodeURIComponent(allQuestionDetails[qtidx].question) + '_' + qtidx"
 								class="w-3.5 h-3.5 text-ink-gray-9 rounded-sm focus:ring-outline-gray-modals"
-								v-model="selectedOptions[index - 1]"
+								v-model="allSelectedOptions[qtidx][index - 1]"
 								:true-value="1"
 								:false-value="0"
-								@change="markAnswer(index)"
+								@change="markAnswerForQuestion(qtidx, index)"
 							/>
 							<div
 								v-else-if="quiz.data.show_answers"
-								v-for="(answer, idx) in showAnswers"
+								v-for="(answer, idx) in allShowAnswers[qtidx]"
 							>
 								<div v-if="index - 1 == idx">
 									<CheckCircle
@@ -157,27 +155,27 @@
 							</div>
 							<span
 								class="ml-2"
-								v-html="questionDetails.data[`option_${index}`]"
+								v-html="allQuestionDetails[qtidx][`option_${index}`]"
 							>
 							</span>
 						</label>
 						<div
-							v-if="questionDetails.data[`explanation_${index}`]"
+							v-if="allQuestionDetails[qtidx][`explanation_${index}`]"
 							class="mt-2 text-xs"
-							v-show="showAnswers.length"
+							v-show="allShowAnswers[qtidx]?.length"
 						>
-							{{ questionDetails.data[`explanation_${index}`] }}
+							{{ allQuestionDetails[qtidx][`explanation_${index}`] }}
 						</div>
 					</div>
-					<div v-else-if="questionDetails.data.type == 'User Input'">
+					<div v-else-if="allQuestionDetails[qtidx]?.type == 'User Input'">
 						<FormControl
-							v-model="possibleAnswer"
+							v-model="allPossibleAnswers[qtidx]"
 							type="textarea"
-							:disabled="showAnswers.length ? true : false"
+							:disabled="allShowAnswers[qtidx]?.length ? true : false"
 							class="my-2"
 						/>
-						<div v-if="showAnswers.length">
-							<Badge v-if="showAnswers[0]" :label="__('Correct')" theme="green">
+						<div v-if="allShowAnswers[qtidx]?.length">
+							<Badge v-if="allShowAnswers[qtidx][0]" :label="__('Correct')" theme="green">
 								<template #prefix>
 									<CheckCircle class="w-4 h-4 text-ink-green-2 mr-1" />
 								</template>
@@ -189,25 +187,25 @@
 							</Badge>
 						</div>
 					</div>
-					<div v-else-if="questionDetails.data.type == 'Fill In'">
+					<div v-else-if="allQuestionDetails[qtidx]?.type == 'Fill In'">
 						<div class="space-y-4">
 							<div class="text-ink-gray-9 font-medium mb-4">
 								<span
-									v-for="(part, index) in parsedFillInQuestion"
+									v-for="(part, index) in allParsedFillInQuestions[qtidx]"
 									:key="index"
 								>
 									<span v-if="part.type === 'text'">{{ part.value }}</span>
 									<input
 										v-else
 										type="text"
-										v-model="fillInAnswers[part.index]"
-										:disabled="showAnswers.length ? true : false"
+										v-model="allFillInAnswers[qtidx][part.index]"
+										:disabled="allShowAnswers[qtidx]?.length ? true : false"
 										:class="[
 											'inline-block w-32 px-2 py-1 mx-1 border rounded-md focus:outline-none',
-											showAnswers.length
-												? showAnswers[part.index] === true
+											allShowAnswers[qtidx]?.length
+												? allShowAnswers[qtidx][part.index] === true
 													? 'border-green-500 bg-green-50 text-green-900'
-													: showAnswers[part.index] === false
+													: allShowAnswers[qtidx][part.index] === false
 														? 'border-red-500 bg-red-50 text-red-900'
 														: ''
 												: 'focus:ring-2 focus:ring-blue-500 focus:border-blue-500',
@@ -221,55 +219,219 @@
 					<div v-else>
 						<TextEditor
 							class="mt-4"
-							:content="possibleAnswer"
-							@change="(val) => (possibleAnswer = val)"
+							:content="allPossibleAnswers[qtidx]"
+							@change="(val) => (allPossibleAnswers[qtidx] = val)"
 							:editable="true"
 							:fixedMenu="true"
 							editorClass="prose-sm max-w-none border-b border-x bg-surface-gray-2 rounded-b-md py-1 px-2 min-h-[7rem]"
 						/>
 					</div>
-					<div class="flex items-center justify-between mt-4">
-						<div class="text-sm text-ink-gray-5">
-							{{
-								__('Question {0} of {1}').format(
-									activeQuestion,
-									questions.length,
-								)
-							}}
+				</div>
+				
+				<!-- Submit button for all questions -->
+				<div class="flex justify-center mt-8">
+					<Button @click="submitQuiz()">
+						<span>{{ __('Submit Quiz') }}</span>
+					</Button>
+				</div>
+			</div>
+			
+			<!-- Original single question display -->
+			<div v-else-if="!quiz.data?.show_all_questions || activeQuestion > 0">
+				<div v-for="(question, qtidx) in questions">
+					<div
+						v-if="qtidx == activeQuestion - 1 && questionDetails.data"
+						class="border rounded-md p-5"
+					>
+						<div class="flex justify-between">
+							<div class="text-sm text-ink-gray-5">
+								<span class="mr-2">
+									{{ __('Question {0}').format(activeQuestion) }}:
+								</span>
+								<span>
+									{{ getInstructions(questionDetails.data) }}
+								</span>
+							</div>
+							<div
+								class="text-ink-gray-9 text-sm font-semibold item-left flex items-center gap-2"
+							>
+								{{ question.marks }}
+								{{ question.marks == 1 ? __('Mark') : __('Marks') }}
+								<Checkbox
+									size="sm"
+									v-model="flaggedQuestions[activeQuestion - 1]"
+									:label="__('Flag')"
+								/>
+							</div>
 						</div>
-						<Button
-							v-if="
-								quiz.data.show_answers &&
-								!showAnswers.length &&
-								questionDetails.data.type != 'Open Ended'
-							"
-							@click="checkAnswer()"
-						>
-							<span>
-								{{ __('Check') }}
-							</span>
-						</Button>
-						<Button v-else-if="!allQuestionsAnswered" @click="nextQuestion()">
-							<span>
-								{{ __('Next') }}
-							</span>
-						</Button>
-						<Button v-else @click="submitQuiz()">
-							<span>
-								{{ __('Submit') }}
-							</span>
-						</Button>
-					</div>
+						<div
+							class="text-ink-gray-9 font-semibold mt-2 leading-5"
+							v-html="questionDetails.data.question"
+						></div>
+						<div v-if="questionDetails.data.type == 'Choices'" v-for="index in 4">
+							<label
+								v-if="questionDetails.data[`option_${index}`]"
+								:class="[
+									'flex items-center rounded-md p-3 mt-4 w-full cursor-pointer focus:border-blue-600',
+									selectedOptions[index - 1] ? 'bg-surface-gray-4' : 'bg-surface-gray-3'
+								]"
+							>
+								<input
+									v-if="!showAnswers.length && !questionDetails.data.multiple"
+									type="radio"
+									:name="encodeURIComponent(questionDetails.data.question)"
+									class="w-3.5 h-3.5 text-ink-gray-9 focus:ring-outline-gray-modals"
+									v-model="selectedOptions[index - 1]"
+									:value="1"
+									@change="markAnswer(index)"
+								/>
 
-					<QuizNavigation
-						:total-questions="questions.length"
-						:current-question="activeQuestion"
-						:question-statuses="questionStatuses"
-						:show-answers="quiz.data?.show_answers"
-						:flagged-questions="flaggedQuestions"
-						:review-mode="quizSubmission.data && !quizSubmission.data.is_open_ended"
-						@navigate="navigateToQuestion"
-					/>
+								<input
+									v-else-if="!showAnswers.length && questionDetails.data.multiple"
+									type="checkbox"
+									:name="encodeURIComponent(questionDetails.data.question)"
+									class="w-3.5 h-3.5 text-ink-gray-9 rounded-sm focus:ring-outline-gray-modals"
+									v-model="selectedOptions[index - 1]"
+									:true-value="1"
+									:false-value="0"
+									@change="markAnswer(index)"
+								/>
+								<div
+									v-else-if="quiz.data.show_answers"
+									v-for="(answer, idx) in showAnswers"
+								>
+									<div v-if="index - 1 == idx">
+										<CheckCircle
+											v-if="answer == 1"
+											class="w-4 h-4 text-ink-green-2"
+										/>
+										<MinusCircle
+											v-else-if="answer == 2"
+											class="w-4 h-4 text-ink-green-2"
+										/>
+										<XCircle
+											v-else-if="answer == 0"
+											class="w-4 h-4 text-ink-red-3"
+										/>
+										<MinusCircle v-else class="w-4 h-4" />
+									</div>
+								</div>
+								<span
+									class="ml-2"
+									v-html="questionDetails.data[`option_${index}`]"
+								>
+								</span>
+							</label>
+							<div
+								v-if="questionDetails.data[`explanation_${index}`]"
+								class="mt-2 text-xs"
+								v-show="showAnswers.length"
+							>
+								{{ questionDetails.data[`explanation_${index}`] }}
+							</div>
+						</div>
+						<div v-else-if="questionDetails.data.type == 'User Input'">
+							<FormControl
+								v-model="possibleAnswer"
+								type="textarea"
+								:disabled="showAnswers.length ? true : false"
+								class="my-2"
+							/>
+							<div v-if="showAnswers.length">
+								<Badge v-if="showAnswers[0]" :label="__('Correct')" theme="green">
+									<template #prefix>
+										<CheckCircle class="w-4 h-4 text-ink-green-2 mr-1" />
+									</template>
+								</Badge>
+								<Badge v-else theme="red" :label="__('Incorrect')">
+									<template #prefix>
+										<XCircle class="w-4 h-4 text-ink-red-3 mr-1" />
+									</template>
+								</Badge>
+							</div>
+						</div>
+						<div v-else-if="questionDetails.data.type == 'Fill In'">
+							<div class="space-y-4">
+								<div class="text-ink-gray-9 font-medium mb-4">
+									<span
+										v-for="(part, index) in parsedFillInQuestion"
+										:key="index"
+									>
+										<span v-if="part.type === 'text'">{{ part.value }}</span>
+										<input
+											v-else
+											type="text"
+											v-model="fillInAnswers[part.index]"
+											:disabled="showAnswers.length ? true : false"
+											:class="[
+												'inline-block w-32 px-2 py-1 mx-1 border rounded-md focus:outline-none',
+												showAnswers.length
+													? showAnswers[part.index] === true
+														? 'border-green-500 bg-green-50 text-green-900'
+														: showAnswers[part.index] === false
+															? 'border-red-500 bg-red-50 text-red-900'
+															: ''
+													: 'focus:ring-2 focus:ring-blue-500 focus:border-blue-500',
+											]"
+											:placeholder="__('Answer')"
+										/>
+									</span>
+								</div>
+							</div>
+						</div>
+						<div v-else>
+							<TextEditor
+								class="mt-4"
+								:content="possibleAnswer"
+								@change="(val) => (possibleAnswer = val)"
+								:editable="true"
+								:fixedMenu="true"
+								editorClass="prose-sm max-w-none border-b border-x bg-surface-gray-2 rounded-b-md py-1 px-2 min-h-[7rem]"
+							/>
+						</div>
+						<div class="flex items-center justify-between mt-4">
+							<div class="text-sm text-ink-gray-5">
+								{{
+									__('Question {0} of {1}').format(
+										activeQuestion,
+										questions.length,
+									)
+								}}
+							</div>
+							<Button
+								v-if="
+									quiz.data.show_answers &&
+									!showAnswers.length &&
+									questionDetails.data.type != 'Open Ended'
+								"
+								@click="checkAnswer()"
+							>
+								<span>
+									{{ __('Check') }}
+								</span>
+							</Button>
+							<Button v-else-if="!allQuestionsAnswered" @click="nextQuestion()">
+								<span>
+									{{ __('Next') }}
+								</span>
+							</Button>
+							<Button v-else @click="submitQuiz()">
+								<span>
+									{{ __('Submit') }}
+								</span>
+							</Button>
+						</div>
+
+						<QuizNavigation
+							:total-questions="questions.length"
+							:current-question="activeQuestion"
+							:question-statuses="questionStatuses"
+							:show-answers="quiz.data?.show_answers"
+							:flagged-questions="flaggedQuestions"
+							:review-mode="quizSubmission.data && !quizSubmission.data.is_open_ended"
+							@navigate="navigateToQuestion"
+						/>
+					</div>
 				</div>
 			</div>
 		</div>
@@ -440,6 +602,14 @@ const flaggedQuestions = reactive([])
 
 const allQuestionDetailsLoaded = ref(false)
 
+// Add reactive variables for single page display
+const allQuestionDetails = reactive([])
+const allSelectedOptions = reactive([])
+const allShowAnswers = reactive([])
+const allPossibleAnswers = reactive([])
+const allFillInAnswers = reactive([])
+const allParsedFillInQuestions = reactive([])
+
 const props = defineProps({
 	quizName: {
 		type: String,
@@ -491,6 +661,62 @@ const populateQuestions = () => {
 		questions = data.questions
 	}
 	initializeQuestionStatuses()
+	
+	// Initialize single page display variables
+	if (data.show_all_questions) {
+		initializeSinglePageDisplay()
+	}
+}
+
+// Add function to initialize single page display
+const initializeSinglePageDisplay = () => {
+	// Clear existing arrays
+	allQuestionDetails.splice(0, allQuestionDetails.length)
+	allSelectedOptions.splice(0, allSelectedOptions.length)
+	allShowAnswers.splice(0, allShowAnswers.length)
+	allPossibleAnswers.splice(0, allPossibleAnswers.length)
+	allFillInAnswers.splice(0, allFillInAnswers.length)
+	allParsedFillInQuestions.splice(0, allParsedFillInQuestions.length)
+	
+	// Initialize arrays for each question
+	questions.forEach((question, index) => {
+		allQuestionDetails[index] = null
+		allSelectedOptions[index] = [0, 0, 0, 0]
+		allShowAnswers[index] = []
+		allPossibleAnswers[index] = null
+		allFillInAnswers[index] = []
+		allParsedFillInQuestions[index] = []
+	})
+	
+	// Load all question details
+	loadAllQuestionDetailsForSinglePage()
+}
+
+// Add function to load all question details for single page mode
+const loadAllQuestionDetailsForSinglePage = async () => {
+	for (const [index, question] of questions.entries()) {
+		try {
+			const details = await call('lms.lms.utils.get_question_details', {
+				question: question.question,
+			})
+			allQuestionDetails[index] = details
+			
+			// Initialize fill-in questions
+			if (details.type === 'Fill In') {
+				try {
+					if (details.text_with_blanks) {
+						const blankCount = details.text_with_blanks.match(/__(\d+)__/g)?.length || 0
+						allFillInAnswers[index] = new Array(blankCount).fill('')
+						allParsedFillInQuestions[index] = parseFillInQuestion(details.text_with_blanks)
+					}
+				} catch (error) {
+					console.error('Error parsing fill-in question:', error)
+				}
+			}
+		} catch (error) {
+			console.error(`Error loading details for question ${question.question}:`, error)
+		}
+	}
 }
 
 const setupTimer = () => {
@@ -590,7 +816,7 @@ const quizSubmission = createResource({
 	makeParams(values) {
 		return {
 			quiz: quiz.data.name,
-			results: localStorage.getItem(quiz.data.title),
+			results: values.results || localStorage.getItem(quiz.data.title),
 		}
 	},
 })
@@ -646,7 +872,12 @@ watch(
 )
 
 const startQuiz = () => {
-	activeQuestion.value = 1
+	if (quiz.data?.show_all_questions) {
+		// For single page mode, set activeQuestion to -1 to indicate quiz is started but not showing individual questions
+		activeQuestion.value = -1
+	} else {
+		activeQuestion.value = 1
+	}
 	localStorage.removeItem(quiz.data.title)
 	if (quiz.data.duration) startTimer()
 }
@@ -655,6 +886,13 @@ const markAnswer = (index) => {
 	if (!questionDetails.data.multiple)
 		selectedOptions.splice(0, selectedOptions.length, ...[0, 0, 0, 0])
 	selectedOptions[index - 1] = selectedOptions[index - 1] ? 0 : 1
+}
+
+// Add function to mark answer for specific question in single page mode
+const markAnswerForQuestion = (questionIndex, index) => {
+	if (!allQuestionDetails[questionIndex].multiple)
+		allSelectedOptions[questionIndex].splice(0, allSelectedOptions[questionIndex].length, ...[0, 0, 0, 0])
+	allSelectedOptions[questionIndex][index - 1] = allSelectedOptions[questionIndex][index - 1] ? 0 : 1
 }
 
 const stripHtml = (html) => {
@@ -704,6 +942,31 @@ const getAnswers = () => {
 		return answers
 	} else {
 		return [possibleAnswer.value]
+	}
+}
+
+// Add function to get answers for specific question in single page mode
+const getAnswersForQuestion = (questionIndex) => {
+	const questionDetail = allQuestionDetails[questionIndex]
+	if (!questionDetail) return []
+	
+	if (questionDetail.type === 'Choices') {
+		return allSelectedOptions[questionIndex]
+			.map((option, index) =>
+				option ? questionDetail[`option_${index + 1}`] : null,
+			)
+			.filter(Boolean)
+	} else if (questionDetail.type === 'Fill In') {
+		const requiredBlanks =
+			questionDetail.text_with_blanks.match(/__(\d+)__/g)?.length || 0
+		const answers = allFillInAnswers[questionIndex].slice(0, requiredBlanks)
+		const allFilled = answers.every((answer) => answer && answer.trim() !== '')
+		if (!allFilled) {
+			return []
+		}
+		return answers
+	} else {
+		return [allPossibleAnswers[questionIndex]]
 	}
 }
 
@@ -791,6 +1054,68 @@ const checkAnswer = (questionContext = null, isSubmit = false) => {
 	})
 }
 
+// Add function to check answers for all questions in single page mode
+const checkAllAnswers = () => {
+	questions.forEach((question, index) => {
+		const answers = getAnswersForQuestion(index)
+		const questionDetail = allQuestionDetails[index]
+		
+		if (!questionDetail) return
+		
+		createResource({
+			url: 'lms.lms.doctype.lms_quiz.lms_quiz.check_answer',
+			params: {
+				question: question.question,
+				type: questionDetail.type,
+				answers: JSON.stringify(answers),
+			},
+			auto: true,
+			onSuccess(data) {
+				let tempShowAnswers = []
+				let type = questionDetail.type
+				
+				if (type == 'Choices') {
+					allSelectedOptions[index].forEach((option, idx) => {
+						if (option) {
+							tempShowAnswers[idx] = option && data[idx]
+						} else if (data[idx] == 2) {
+							tempShowAnswers[idx] = 2
+						} else {
+							tempShowAnswers[idx] = undefined
+						}
+					})
+					const isCorrect = data.every(
+						(val, idx) => !allSelectedOptions[index][idx] || val === 1,
+					)
+					questionStatuses[index] = {
+						answered: true,
+						isCorrect: isCorrect,
+					}
+				} else if (type == 'Fill In') {
+					tempShowAnswers = [...data]
+					const isCorrect = data.every((val) => val === true)
+					questionStatuses[index] = {
+						answered: true,
+						isCorrect: isCorrect,
+					}
+				} else if (type == 'User Input') {
+					tempShowAnswers = [data]
+					const isCorrect = data === true
+					questionStatuses[index] = {
+						answered: true,
+						isCorrect: isCorrect,
+					}
+				}
+
+				addToLocalStorage(question.question, answers, tempShowAnswers)
+				if (quiz.data.show_answers) {
+					allShowAnswers[index] = tempShowAnswers
+				}
+			},
+		})
+	})
+}
+
 const addToLocalStorage = (
 	questionName,
 	answers,
@@ -873,6 +1198,65 @@ const resetQuestion = () => {
 }
 
 const submitQuiz = () => {
+	// Handle single page mode
+	if (quiz.data?.show_all_questions) {
+		// Check all answers and save to localStorage for single page mode
+		questions.forEach((question, index) => {
+			const answers = getAnswersForQuestion(index)
+			const questionDetail = allQuestionDetails[index]
+			
+			if (questionDetail && answers.length > 0) {
+				// Check the answer to get correctness
+				createResource({
+					url: 'lms.lms.doctype.lms_quiz.lms_quiz.check_answer',
+					params: {
+						question: question.question,
+						type: questionDetail.type,
+						answers: JSON.stringify(answers),
+					},
+					auto: true,
+					onSuccess(data) {
+						let tempShowAnswers = []
+						let type = questionDetail.type
+						let isCorrect = false
+						
+						if (type == 'Choices') {
+							allSelectedOptions[index].forEach((option, idx) => {
+								if (option) {
+									tempShowAnswers[idx] = option && data[idx]
+								} else if (data[idx] == 2) {
+									tempShowAnswers[idx] = 2
+								} else {
+									tempShowAnswers[idx] = undefined
+								}
+							})
+							isCorrect = data.every(
+								(val, idx) => !allSelectedOptions[index][idx] || val === 1,
+							)
+						} else if (type == 'Fill In') {
+							tempShowAnswers = [...data]
+							isCorrect = data.every((val) => val === true)
+						} else if (type == 'User Input') {
+							tempShowAnswers = [data]
+							isCorrect = data === true
+						}
+
+						addToLocalStorage(question.question, answers, tempShowAnswers)
+						questionStatuses[index] = {
+							answered: true,
+							isCorrect: isCorrect,
+						}
+					},
+				})
+			}
+		})
+		setTimeout(() => {
+			createSubmission()
+		}, 1000) // Increased timeout to allow for answer checking
+		return
+	}
+	
+	// Original single question mode
 	if (!quiz.data.show_answers) {
 		// Always save the last question's answer before submitting, for all types
 		const context = {
@@ -904,6 +1288,15 @@ const resetQuiz = () => {
 	selectedOptions.splice(0, selectedOptions.length, ...[0, 0, 0, 0])
 	showAnswers.length = 0
 	quizSubmission.reset()
+	
+	// Clear single page display variables
+	if (quiz.data?.show_all_questions) {
+		allSelectedOptions.splice(0, allSelectedOptions.length)
+		allShowAnswers.splice(0, allShowAnswers.length)
+		allPossibleAnswers.splice(0, allPossibleAnswers.length)
+		allFillInAnswers.splice(0, allFillInAnswers.length)
+	}
+	
 	populateQuestions()
 	setupTimer()
 }
@@ -1165,8 +1558,20 @@ const summaryRows = computed(() => {
 
 // Update the createSubmission function to load question details
 const createSubmission = () => {
+	// Get the results from localStorage
+	const results = localStorage.getItem(quiz.data.title)
+	
+	// Ensure results is not null/undefined
+	if (!results) {
+		console.warn('No quiz results found in localStorage')
+		toast.error(__('No quiz answers found. Please try again.'))
+		return
+	}
+	
 	quizSubmission.submit(
-		{},
+		{
+			results: results
+		},
 		{
 			async onSuccess(data) {
 				// Load all question details for the summary
@@ -1186,6 +1591,10 @@ const createSubmission = () => {
 					setTimeout(() => {
 						window.location.reload()
 					}, 3000)
+				} else {
+					// Show generic error for other issues
+					toast.error(__('An error occurred while submitting the quiz. Please try again.'))
+					console.error('Quiz submission error:', err)
 				}
 			},
 		},
